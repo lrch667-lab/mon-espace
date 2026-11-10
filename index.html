@@ -864,7 +864,7 @@ async function mfLoad(){
 setInterval(()=>{if(mfcfg.key&&!$('#v-home').hidden&&document.visibilityState==='visible')mfLoad()},60000);
 setInterval(()=>{const el=$('#mf-ago');if(el&&MF.t)el.textContent=ago(MF.t)},15000);
 function renderMyFeed(){
- const el=$('#mf');if(!el||el.contains(document.activeElement))return;
+ const el=$('#mf'),ae=document.activeElement;if(!el||(el.contains(ae)&&/^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)))return;
  const open='<a class="btn ghost" href="https://myfeed.fans" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;text-decoration:none;margin-top:12px">Ouvrir MyFeed ↗</a>';
  if(!mfcfg.key||MF.edit){
   el.className='card';
