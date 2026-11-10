@@ -75,12 +75,15 @@ select.mini{width:auto;max-width:140px;padding:3px 8px;font-size:12.5px;border-r
 .seg button.on{background:var(--soft);color:var(--accent);font-weight:600}
 .cols{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(210px,1fr);overflow-x:auto;border-top:1px solid var(--line);margin:0 -20px -18px;min-height:260px}
 .cols.one{grid-auto-columns:1fr}
-.col{padding:6px 16px 16px;border-left:1px solid var(--line);min-width:0}
+.col{padding:6px 16px 16px;border-left:1px solid #fff;min-width:0}
 .col:first-child{border-left:0}
 .colhead{display:flex;gap:8px;align-items:baseline;padding:8px 0 10px;font-size:14px}
 .col.now .colhead b{color:var(--accent)}
 .cnt{color:var(--muted);font-size:12px}
-.col li{align-items:flex-start}
+.col li{flex-wrap:wrap;align-items:center;row-gap:2px}
+.col li .time{flex:1}
+.col li .evt{order:5;flex-basis:100%;padding-left:19px;font-size:14px}
+.tag{white-space:nowrap}
 .addline{all:unset;cursor:pointer;color:var(--muted);font-size:14px;padding:8px 0;display:flex;gap:8px;align-items:center}
 .addline b{color:var(--danger);font-size:18px;font-weight:400;line-height:1}
 .addline:hover{color:var(--text)}
@@ -505,7 +508,7 @@ function evKind(e){
 function tag(e){const k=evKind(e);return k?`<span class="tag ${k}">${k==='cm'?'CM':'PRS'}</span>`:''}
 function evItem(e){
  const i=shown.push(e)-1;
- return`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="grow" style="min-width:0"><span style="display:block;overflow-wrap:anywhere">${tag(e)}${esc(e.title)}</span></span>${e.link?`<a class="icon" href="${esc(e.link)}" target="_blank" rel="noopener noreferrer" title="Ouvrir dans Google Agenda">${OPEN}</a>`:''}${e.canEdit?`<button class="icon" data-i="${i}" title="Supprimer">${X}</button>`:''}</li>`}
+ return`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="grow evt" style="min-width:0"><span style="display:block;overflow-wrap:break-word">${tag(e)}${esc(e.title)}</span></span>${e.link?`<a class="icon" href="${esc(e.link)}" target="_blank" rel="noopener noreferrer" title="Ouvrir dans Google Agenda">${OPEN}</a>`:''}${e.canEdit?`<button class="icon" data-i="${i}" title="Supprimer">${X}</button>`:''}</li>`}
 function writableCals(){return gOn()?G.cals.filter(canWrite):[]}
 function calOptions(){const w=writableCals();return'<option value="local">Cet appareil uniquement</option>'+w.map(c=>`<option value="${esc(c.id)}"${c.id===gcfg.target?' selected':''}>${esc(calName(c))}</option>`).join('')}
 function colLabel(k,t){const d=new Date(k+'T00:00');const rel=k===t?'Aujourd’hui':k===addDays(t,1)?'Demain':cap(d.toLocaleDateString('fr-FR',{weekday:'long'}));return`${d.getDate()} ${cap(d.toLocaleDateString('fr-FR',{month:'short'}).replace('.',''))} · ${rel}`}
