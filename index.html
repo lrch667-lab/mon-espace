@@ -170,6 +170,11 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 .mf-bar{height:5px;border-radius:3px;background:var(--line);margin:6px 0;overflow:hidden}
 .mf-bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
 #mf-model{max-width:130px}
+.qnote{display:flex;gap:8px;align-items:flex-start;margin-top:6px;color:var(--muted)}
+.qnote b{color:var(--danger);font-weight:400;font-size:18px;line-height:22px}
+.qnote textarea{border:0;background:transparent;padding:1px 0;resize:none;overflow:hidden;font-size:14px;line-height:20px;color:var(--text)}
+.qnote textarea:focus{border:0}
+.qnote textarea::placeholder{color:var(--muted)}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:10}
 #toast.show{opacity:1;transform:translateX(-50%)}
 
@@ -211,7 +216,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
   <div class="grid3">
    <div class="card"><h3>Agenda du jour <button class="link" data-go="agenda">Ouvrir</button></h3><ul class="plain" id="home-events"></ul></div>
    <div class="card"><h3>À faire <button class="link" data-go="todo">Ouvrir</button></h3><ul class="plain" id="home-todos"></ul></div>
-   <div class="card"><h3>Notes récentes <button class="link" data-go="notes">Ouvrir</button></h3><ul class="plain" id="home-notes"></ul><form id="home-note" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"><textarea id="hn-text" rows="2" placeholder="Nouvelle note… (1re ligne = titre)" style="resize:vertical"></textarea><button class="btn">Ajouter la note</button></form></div>
+   <div class="card"><h3>Notes récentes <button class="link" data-go="notes">Ouvrir</button></h3><ul class="plain" id="home-notes"></ul><form id="home-note" class="qnote"><b>+</b><textarea id="hn-text" rows="1" placeholder="Ajouter une note"></textarea></form></div>
   </div>
   <div class="card" style="margin-top:16px;min-width:0">
    <div class="calhead">
@@ -559,8 +564,9 @@ function dayEvents(k){
 // note rapide depuis la page Aujourd'hui
 $('#home-note').onsubmit=e=>{e.preventDefault();const t=$('#hn-text').value.trim();if(!t)return;
  const NL=String.fromCharCode(10),lines=t.split(NL),title=lines[0].slice(0,80),body=(lines[0].length>80?lines[0].slice(80)+NL:'')+lines.slice(1).join(NL);
- notes.push({id:uid(),title,body:body.trim(),updated:Date.now()});save('hub.notes',notes);$('#hn-text').value='';renderHome();toast('Note ajoutée')};
-$('#hn-text').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();$('#home-note').requestSubmit()}};
+ notes.push({id:uid(),title,body:body.trim(),updated:Date.now()});save('hub.notes',notes);$('#hn-text').value='';$('#hn-text').style.height='auto';renderHome();toast('Note ajoutée')};
+$('#hn-text').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#home-note').requestSubmit()}};
+$('#hn-text').oninput=e=>{e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px'};
 
 // ---------- agenda
 let cal=new Date();cal.setDate(1);let sel=today(),shown=[];
