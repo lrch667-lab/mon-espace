@@ -175,6 +175,18 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
    <p class="warn" style="margin:0 0 12px">Quand Google est connecté, tâches, notes et coffre se synchronisent tout seuls entre tes appareils (dossier caché de ton Google Drive, le coffre y reste chiffré). Tu peux aussi exporter une copie de secours.</p>
    <div class="row"><button class="btn ghost" id="export">Exporter</button><button class="btn ghost" id="import">Importer</button><input type="file" id="importfile" accept=".json" hidden></div>
   </div>
+  <div class="card" style="margin-top:16px;min-width:0">
+   <div class="calhead">
+    <strong id="hw-title"></strong>
+    <span class="due" id="hw-status"></span>
+    <div class="seg" id="hw-mode"><button data-m="day">Jour</button><button data-m="week">Semaine</button><button data-m="month">Mois</button></div>
+    <button class="icon" id="hw-refresh" title="Actualiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+    <button class="btn ghost" id="hw-today" style="padding:6px 12px">Aujourd’hui</button>
+    <button class="icon" id="hw-prev" aria-label="Précédent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <button class="icon" id="hw-next" aria-label="Suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></button>
+   </div>
+   <div class="cols" id="hw-cols"></div>
+  </div>
  </section>
 
  <!-- AGENDA -->
@@ -340,6 +352,7 @@ function renderHome(){
  $('#hello').textContent=h>=18||h<5?'Bonsoir':'Bonjour';
  $('#today-date').textContent=fmtLong(t);
  const now=new Date();loadMonth(now.getFullYear(),now.getMonth());
+ shown=[];renderHomeWeek();
  const ev=dayEvents(t);
  $('#home-events').innerHTML=ev.length?ev.map(e=>`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="trunc">${tag(e)}${esc(e.title)}</span></li>`).join(''):'<li class="empty">Rien de prévu aujourd’hui</li>';
  const td=todos.filter(x=>!x.done).sort(byDue).slice(0,6);
@@ -495,6 +508,16 @@ function evItem(e){
 function writableCals(){return gOn()?G.cals.filter(canWrite):[]}
 function calOptions(){const w=writableCals();return'<option value="local">Cet appareil uniquement</option>'+w.map(c=>`<option value="${esc(c.id)}"${c.id===gcfg.target?' selected':''}>${esc(calName(c))}</option>`).join('')}
 function colLabel(k,t){const d=new Date(k+'T00:00');const rel=k===t?'Aujourd’hui':k===addDays(t,1)?'Demain':cap(d.toLocaleDateString('fr-FR',{weekday:'long'}));return`${d.getDate()} ${cap(d.toLocaleDateString('fr-FR',{month:'short'}).replace('.',''))} · ${rel}`}
+// colonnes Jour / Semaine (utilisées dans Agenda et dans Aujourd'hui)
+function colsView(start,n){
+ const t=today(),days=[...Array(n)].map((_,i)=>addDays(start,i));
+ const s=new Date(days[0]+'T00:00'),e=new Date(days[n-1]+'T00:00');
+ loadMonth(s.getFullYear(),s.getMonth());loadMonth(e.getFullYear(),e.getMonth());
+ const loading=G.cache[s.getFullYear()+'-'+s.getMonth()]?.loading||G.cache[e.getFullYear()+'-'+e.getMonth()]?.loading;
+ const title=n===1?fmtLong(start):`${s.getDate()}${s.getMonth()!==e.getMonth()?' '+s.toLocaleDateString('fr-FR',{month:'short'}):''} – ${e.getDate()} ${e.toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}`;
+ const sel2=writableCals().length?`<select name="cal">${calOptions()}</select>`:'';
+ const html=days.map(k=>{const evs=dayEvents(k);return`<div class="col${k===t?' now':''}"><div class="colhead"><b>${n===1?fmtLong(k):colLabel(k,t)}</b><span class="cnt">${evs.length}</span></div><ul class="plain">${evs.map(evItem).join('')}</ul><button class="addline" data-add="${k}"><b>+</b>Ajouter</button><form class="inl" data-date="${k}" hidden><div class="row"><input type="time" name="tm" style="width:110px"><input type="text" name="ttl" placeholder="Titre" required></div>${sel2}<div class="row"><button class="btn">Ajouter</button><button type="button" class="btn ghost" data-cancel>Annuler</button></div></form></div>`}).join('');
+ return{title,loading,html}}
 function renderAgenda(){
  if(document.activeElement?.closest?.('#cal-cols form'))return; // ne pas effacer une saisie en cours
  shown=[];const t=today(),wide=calMode!=='month';
@@ -518,14 +541,9 @@ function renderAgenda(){
   $('#day-events').innerHTML=dl.length?dl.map(evItem).join(''):'<li class="empty">Aucun événement</li>';
   const s=$('#ev-cal');s.innerHTML=calOptions();s.value=writableCals().some(c=>c.id===gcfg.target)?gcfg.target:'local';s.hidden=!writableCals().length;
  }else{
-  const n=calMode==='week'?7:1,days=[...Array(n)].map((_,i)=>addDays(sel,i));
-  const s=new Date(days[0]+'T00:00'),e=new Date(days[n-1]+'T00:00');
-  loadMonth(s.getFullYear(),s.getMonth());loadMonth(e.getFullYear(),e.getMonth());
-  loading=G.cache[s.getFullYear()+'-'+s.getMonth()]?.loading||G.cache[e.getFullYear()+'-'+e.getMonth()]?.loading;
-  $('#cal-title').textContent=n===1?fmtLong(sel):`${s.getDate()}${s.getMonth()!==e.getMonth()?' '+s.toLocaleDateString('fr-FR',{month:'short'}):''} – ${e.getDate()} ${e.toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}`;
-  const sel2=writableCals().length?`<select name="cal">${calOptions()}</select>`:'';
-  const c=$('#cal-cols');c.className='cols'+(n===1?' one':'');
-  c.innerHTML=days.map(k=>{const evs=dayEvents(k);return`<div class="col${k===t?' now':''}"><div class="colhead"><b>${n===1?fmtLong(k):colLabel(k,t)}</b><span class="cnt">${evs.length}</span></div><ul class="plain">${evs.map(evItem).join('')}</ul><button class="addline" data-add="${k}"><b>+</b>Ajouter</button><form class="inl" data-date="${k}" hidden><div class="row"><input type="time" name="tm" style="width:110px"><input type="text" name="ttl" placeholder="Titre" required></div>${sel2}<div class="row"><button class="btn">Ajouter</button><button type="button" class="btn ghost" data-cancel>Annuler</button></div></form></div>`}).join('');
+  const n=calMode==='week'?7:1,w=colsView(sel,n);loading=w.loading;
+  $('#cal-title').textContent=w.title;
+  const c=$('#cal-cols');c.className='cols'+(n===1?' one':'');c.innerHTML=w.html;
  }
  $('#cal-status').textContent=loading?'Synchro…':'';
  renderGPanel();
@@ -595,24 +613,43 @@ $('#ev-form').onsubmit=async e=>{e.preventDefault();
  if(ok){$('#ev-title').value='';$('#ev-time').value=''}
  renderAgenda()};
 // vues Jour / Semaine : ajout direct dans la colonne
-$('#cal-cols').addEventListener('click',e=>{
- const a=e.target.closest('[data-add]');
- if(a){document.querySelectorAll('#cal-cols form').forEach(f=>f.hidden=true);document.querySelectorAll('#cal-cols [data-add]').forEach(b=>b.hidden=false);
-  const f=a.nextElementSibling;f.hidden=false;a.hidden=true;f.ttl.focus();return}
- if(e.target.closest('[data-cancel]')){const f=e.target.closest('form');f.hidden=true;f.previousElementSibling.hidden=false}
+['#cal-cols','#hw-cols'].forEach(sel=>{
+ const box=$(sel);
+ box.addEventListener('click',e=>{
+  const a=e.target.closest('[data-add]');
+  if(a){box.querySelectorAll('form').forEach(f=>f.hidden=true);box.querySelectorAll('[data-add]').forEach(b=>b.hidden=false);
+   const f=a.nextElementSibling;f.hidden=false;a.hidden=true;f.ttl.focus();return}
+  if(e.target.closest('[data-cancel]')){const f=e.target.closest('form');f.hidden=true;f.previousElementSibling.hidden=false}
+ });
+ box.addEventListener('submit',async e=>{e.preventDefault();const f=e.target,title=f.ttl.value.trim();if(!title)return;
+  const target=f.cal?f.cal.value:'local';if(f.cal){gcfg.target=target;save('hub.gcal',gcfg)}
+  const b=f.querySelector('.btn');b.disabled=true;b.textContent='Envoi…';
+  const ok=await addEvent(f.dataset.date,f.tm.value,title,target);
+  document.activeElement?.blur?.();
+  if(ok)rerenderCal();else{b.disabled=false;b.textContent='Ajouter'}});
 });
-$('#cal-cols').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,title=f.ttl.value.trim();if(!title)return;
- const target=f.cal?f.cal.value:'local';if(f.cal){gcfg.target=target;save('hub.gcal',gcfg)}
- const b=f.querySelector('.btn');b.disabled=true;b.textContent='Envoi…';
- const ok=await addEvent(f.dataset.date,f.tm.value,title,target);
- document.activeElement?.blur?.();
- if(ok)renderAgenda();else{b.disabled=false;b.textContent='Ajouter'}});
-// suppression (vue mois, semaine ou jour)
-$('#v-agenda').addEventListener('click',async e=>{const b=e.target.closest('button[data-i]');if(!b)return;const ev=shown[+b.dataset.i];if(!ev)return;
- if(ev.src==='l'){markDeleted(ev.id);events=events.filter(x=>x.id!==ev.id);save('hub.events',events);renderAgenda();return}
+// suppression (Agenda ou Aujourd'hui)
+['#v-agenda','#hw-cols'].forEach(s=>$(s).addEventListener('click',async e=>{const b=e.target.closest('button[data-i]');if(!b)return;const ev=shown[+b.dataset.i];if(!ev)return;
+ if(ev.src==='l'){markDeleted(ev.id);events=events.filter(x=>x.id!==ev.id);save('hub.events',events);rerenderCal();return}
  if(!confirm(`Supprimer « ${ev.title} » de l’agenda « ${ev.cal} » ? (supprimé aussi pour les personnes qui le partagent)`))return;
- try{await gapi(`/calendars/${encodeURIComponent(ev.calId)}/events/${encodeURIComponent(ev.id)}`,{method:'DELETE'});toast('Supprimé');G.cache={};renderAgenda()}
- catch(err){toast(err.message)}});
+ try{await gapi(`/calendars/${encodeURIComponent(ev.calId)}/events/${encodeURIComponent(ev.id)}`,{method:'DELETE'});toast('Supprimé');G.cache={};rerenderCal()}
+ catch(err){toast(err.message)}}));
+// vue semaine de la page Aujourd'hui
+let hwSel=today(),hwMode='week';try{hwMode=localStorage.getItem('hub.homeview')||'week'}catch{}
+$('#hw-mode').onclick=e=>{const m=e.target.dataset.m;if(!m)return;
+ if(m==='month'){calMode='month';try{localStorage.setItem('hub.calview','month')}catch{}sel=hwSel;syncCalToSel();show('agenda');return}
+ hwMode=m;try{localStorage.setItem('hub.homeview',m)}catch{}renderHome()};
+$('#hw-prev').onclick=()=>{hwSel=addDays(hwSel,hwMode==='week'?-7:-1);renderHome()};
+$('#hw-next').onclick=()=>{hwSel=addDays(hwSel,hwMode==='week'?7:1);renderHome()};
+$('#hw-today').onclick=()=>{hwSel=today();renderHome()};
+$('#hw-refresh').onclick=()=>{G.cache={};renderHome()};
+function renderHomeWeek(){
+ if(document.activeElement?.closest?.('#hw-cols form'))return;
+ const n=hwMode==='week'?7:1,w=colsView(hwSel,n);
+ $('#hw-title').textContent=w.title;$('#hw-status').textContent=w.loading?'Synchro…':'';
+ $('#hw-refresh').hidden=!gOn();
+ document.querySelectorAll('#hw-mode [data-m]').forEach(b=>b.classList.toggle('on',b.dataset.m===hwMode));
+ const c=$('#hw-cols');c.className='cols'+(n===1?' one':'');c.innerHTML=w.html}
 
 // ---------- tâches
 let filter='active';
