@@ -175,6 +175,17 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 .qnote textarea{border:0;background:transparent;padding:1px 0;resize:none;overflow:hidden;font-size:14px;line-height:20px;color:var(--text)}
 .qnote textarea:focus{border:0}
 .qnote textarea::placeholder{color:var(--muted)}
+.drop{display:flex;flex-direction:column;align-items:center;gap:6px;padding:26px 16px;border:2px dashed var(--line);border-radius:12px;cursor:pointer;text-align:center;color:var(--muted);transition:.15s}
+.drop svg{width:28px;height:28px;color:var(--accent)}
+.drop b{color:var(--text)}
+.drop small{font-size:12px}
+.drop.over,.drop:hover{border-color:var(--accent);background:var(--soft)}
+.docrow{display:grid;grid-template-columns:38px 1fr auto auto;gap:12px;align-items:center;padding:10px 4px;border-top:1px solid var(--line)}
+.docrow:first-child{border-top:0}
+.docico{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:10.5px;font-weight:800;letter-spacing:.03em;background:color-mix(in srgb,var(--dc) 20%,transparent);color:var(--dc)}
+.docrow .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.docrow .nm:hover{color:var(--accent)}
+@media (max-width:820px){.docrow{grid-template-columns:38px 1fr auto}.docrow .dmeta{display:none}}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:10}
 #toast.show{opacity:1;transform:translateX(-50%)}
 
@@ -204,6 +215,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
  <button data-v="todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Tâches</button>
  <button data-v="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Notes</button>
  <div id="syncstat" class="syncstat"></div>
+ <button data-v="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Documents</button>
  <button data-v="vault"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Coffre</button>
 </nav>
 
@@ -306,6 +318,19 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
   </div>
  </section>
 
+ <!-- DOCUMENTS -->
+ <section id="v-docs" hidden>
+  <h2>Documents</h2><p class="sub">Notes, textes, PDF, images… rangés dans ton Google Drive (dossier privé de l’app), dispo sur tous tes appareils.</p>
+  <div class="card">
+   <label class="drop" id="doc-drop"><input type="file" id="doc-input" multiple hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+    <span><b>Glisse tes fichiers ici</b> ou clique pour choisir</span><small>50 Mo max par fichier</small>
+   </label>
+   <div class="row" style="margin:14px 0 6px"><input type="search" id="doc-search" class="grow" placeholder="Rechercher un document"><span class="due" id="doc-status"></span></div>
+   <div id="doc-list"></div>
+  </div>
+ </section>
+
  <!-- COFFRE -->
  <section id="v-vault" hidden>
   <h2>Coffre-fort</h2><p class="sub">Chiffré AES-256 avec ton mot de passe maître. Rien n’est stocké en clair.</p>
@@ -401,8 +426,8 @@ let tomb=load('hub.tomb',{}); // éléments supprimés (pour que la suppression 
 function markDeleted(id){tomb[id]=Date.now();try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}}
 
 // ---------- navigation
-const views=['home','agenda','todo','notes','vault'];
-const render={home:renderHome,agenda:renderAgenda,todo:renderTodos,notes:renderNotes,vault:renderVault};
+const views=['home','agenda','todo','notes','docs','vault'];
+const render={home:renderHome,agenda:renderAgenda,todo:renderTodos,notes:renderNotes,docs:()=>renderDocs(),vault:renderVault};
 function show(v){if(!views.includes(v))v='home';views.forEach(x=>$('#v-'+x).hidden=x!==v);document.querySelectorAll('nav [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));try{localStorage.setItem('hub.view',v)}catch{}render[v]();window.scrollTo(0,0)}
 document.querySelectorAll('nav [data-v]').forEach(b=>b.onclick=()=>show(b.dataset.v));
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
@@ -780,6 +805,80 @@ $('#note-search').oninput=renderNotes;
 function editNote(){const n=notes.find(x=>x.id===curNote);if(!n)return;n.title=$('#note-title').value;n.body=$('#note-body').value;n.updated=Date.now();clearTimeout(noteT);noteT=setTimeout(()=>{save('hub.notes',notes);renderNotes()},300)}
 $('#note-title').oninput=editNote;$('#note-body').oninput=editNote;
 $('#note-del').onclick=()=>{const n=notes.find(x=>x.id===curNote);if(!n)return;if(confirm(`Supprimer « ${n.title||'Sans titre'} » ?`)){markDeleted(curNote);notes=notes.filter(x=>x.id!==curNote);curNote=null;save('hub.notes',notes);renderNotes()}};
+
+// ---------- documents (fichiers dans le dossier caché Google Drive de l'app, propres à chaque session)
+const DOC={list:null,loading:false,err:'',busy:0};
+const DOC_MAX=50*1024*1024;
+function docKind(name,mime){const e=(name.split('.').pop()||'').toLowerCase();
+ if(mime==='application/pdf'||e==='pdf')return['PDF','#ff6b6b'];
+ if((mime||'').startsWith('image/'))return['IMG','#4dabf7'];
+ if(['doc','docx','odt','rtf','pages'].includes(e))return['DOC','#5c7cfa'];
+ if(['xls','xlsx','csv','ods','numbers'].includes(e))return['XLS','#51cf66'];
+ if(['ppt','pptx','key','odp'].includes(e))return['PPT','#ffa94d'];
+ if(['txt','md','note'].includes(e)||(mime||'').startsWith('text/'))return['TXT','#adb5bd'];
+ if((mime||'').startsWith('video/'))return['VID','#e599f7'];
+ if((mime||'').startsWith('audio/'))return['AUD','#3bc9db'];
+ if(['zip','rar','7z'].includes(e))return['ZIP','#ffd43b'];
+ return[(e||'?').slice(0,4).toUpperCase(),'#868e96']}
+const fsize=b=>!b?'':b<1024?b+' o':b<1048576?(b/1024).toFixed(0)+' Ko':(b/1048576).toFixed(1).replace('.',',')+' Mo';
+async function docLoad(){
+ if(!gOn()){DOC.list=null;renderDocs();return}
+ DOC.loading=true;renderDocs();
+ try{const q=encodeURIComponent("appProperties has { key='kind' and value='doc' } and trashed=false");
+  const r=await gapi(`${DRIVE}?spaces=appDataFolder&q=${q}&orderBy=createdTime desc&pageSize=1000&fields=files(id,name,size,mimeType,createdTime)`);
+  DOC.list=r.files||[];DOC.err=''}
+ catch(e){DOC.err=e.message}
+ DOC.loading=false;renderDocs()}
+async function docUpload(files){
+ if(!gOn()){toast('Connecte Google (onglet Agenda) pour déposer des documents');return}
+ for(const f of files){
+  if(f.size>DOC_MAX){toast(`« ${f.name} » dépasse 50 Mo`);continue}
+  DOC.busy++;renderDocs();
+  try{
+   const meta={name:f.name==='mon-espace.json'?'mon-espace (document).json':f.name,parents:['appDataFolder'],mimeType:f.type||'application/octet-stream',appProperties:{kind:'doc'}};
+   const init=await fetch(`${DUP}?uploadType=resumable`,{method:'POST',headers:{Authorization:'Bearer '+G.token,'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':meta.mimeType},body:JSON.stringify(meta)});
+   if(!init.ok)throw new Error('Envoi refusé ('+init.status+')');
+   const up=await fetch(init.headers.get('Location'),{method:'PUT',headers:{'Content-Type':meta.mimeType},body:f});
+   if(!up.ok)throw new Error('Envoi interrompu ('+up.status+')');
+   toast(`« ${f.name} » ajouté`)}
+  catch(e){toast(`« ${f.name} » : ${e.message}`)}
+  DOC.busy--}
+ await docLoad()}
+async function docBlob(d){
+ const r=await fetch(`${DRIVE}/${d.id}?alt=media`,{headers:{Authorization:'Bearer '+G.token}});
+ if(!r.ok)throw new Error('Téléchargement impossible ('+r.status+')');
+ return new Blob([await r.blob()],{type:d.mimeType||'application/octet-stream'})}
+async function docOpen(d,download){
+ const w=download?null:window.open('','_blank'); // ouvert tout de suite (sinon bloqué comme popup)
+ try{const b=await docBlob(d),u=URL.createObjectURL(b);
+  const viewable=/^(application\/pdf|image\/|text\/|video\/|audio\/)/.test(d.mimeType||'');
+  if(w&&viewable){w.location.href=u}
+  else{if(w)w.close();const a=document.createElement('a');a.href=u;a.download=d.name;a.click()}
+  setTimeout(()=>URL.revokeObjectURL(u),60000)}
+ catch(e){if(w)w.close();toast(e.message)}}
+function renderDocs(){
+ const box=$('#doc-list');if(!box)return;
+ if(!gOn()){box.innerHTML=`<p class="warn" style="margin:6px 0">Connecte ton compte Google (onglet <b>Agenda</b>) pour déposer et retrouver tes documents sur tous tes appareils.</p>`;$('#doc-status').textContent='';return}
+ if(DOC.list===null&&!DOC.loading){docLoad();return}
+ $('#doc-status').textContent=DOC.busy?`Envoi de ${DOC.busy} fichier${DOC.busy>1?'s':''}…`:DOC.loading?'Chargement…':DOC.list?`${DOC.list.length} document${DOC.list.length>1?'s':''}`:'';
+ if(DOC.err){box.innerHTML=`<p class="err">${esc(DOC.err)}</p>`;return}
+ const q=$('#doc-search').value.toLowerCase(),list=(DOC.list||[]).filter(d=>!q||d.name.toLowerCase().includes(q));
+ const I=(p)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p}</svg>`;
+ box.innerHTML=list.length?list.map(d=>{const[k,c]=docKind(d.name,d.mimeType);return`<div class="docrow"><div class="docico" style="--dc:${c}">${esc(k)}</div>
+  <div style="min-width:0"><div class="nm" data-open="${esc(d.id)}" title="Ouvrir">${esc(d.name)}</div><div class="due">${fsize(+d.size)}${d.createdTime?' · '+new Date(d.createdTime).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):''}</div></div>
+  <div class="dmeta"></div>
+  <div class="row" style="gap:0"><button class="icon" data-open="${esc(d.id)}" title="Ouvrir">${I('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>')}</button><button class="icon" data-dl="${esc(d.id)}" title="Télécharger">${I('<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>')}</button><button class="icon" data-del="${esc(d.id)}" title="Supprimer">${I('<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/>')}</button></div></div>`}).join(''):`<p class="empty" style="margin:6px 0">${DOC.loading?'Chargement…':q?'Aucun résultat':'Aucun document pour l’instant.'}</p>`}
+$('#doc-input').onchange=e=>{const f=[...e.target.files];e.target.value='';if(f.length)docUpload(f)};
+const dz=$('#doc-drop');
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('over')}));
+dz.addEventListener('drop',e=>{const f=[...(e.dataTransfer?.files||[])];if(f.length)docUpload(f)});
+$('#doc-search').oninput=renderDocs;
+$('#doc-list').addEventListener('click',async e=>{const t=e.target.closest('[data-open],[data-dl],[data-del]');if(!t)return;
+ const id=t.dataset.open||t.dataset.dl||t.dataset.del,d=(DOC.list||[]).find(x=>x.id===id);if(!d)return;
+ if(t.dataset.del){if(!confirm(`Supprimer « ${d.name} » ? Il sera supprimé sur tous tes appareils.`))return;
+  try{await gapi(`${DRIVE}/${d.id}`,{method:'DELETE'});toast('Document supprimé');DOC.list=DOC.list.filter(x=>x.id!==id);renderDocs()}catch(err){toast(err.message)}return}
+ docOpen(d,!!t.dataset.dl)});
 
 // ---------- coffre-fort (PBKDF2 600k + AES-GCM 256)
 const ITER=600000,te=new TextEncoder(),td=new TextDecoder();
