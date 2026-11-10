@@ -18,7 +18,7 @@ nav button svg{width:18px;height:18px;flex:none}
 nav button:hover{color:var(--text);background:var(--panel)}
 nav button.on{background:var(--soft);color:var(--accent);font-weight:600}
 .syncstat{order:9;margin-top:auto;padding:10px 12px;font-size:12px;color:var(--muted)}
-main{flex:1;min-width:0;padding:36px 44px 60px;max-width:1150px}
+main{flex:1;min-width:0;padding:36px 44px 60px;max-width:1580px}
 h2{font-size:24px;margin:0 0 4px;letter-spacing:-.02em;font-weight:650}
 .sub{color:var(--muted);margin:0 0 26px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
@@ -140,6 +140,15 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 .welcome form{width:min(380px,100%);display:flex;flex-direction:column;gap:12px;text-align:center}
 .welcome h1{margin:0;font-size:26px;letter-spacing:-.02em}
 .welcome h1 span{color:var(--accent)}
+.homegrid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+@media (max-width:1250px){.homegrid{grid-template-columns:1fr}}
+.mf-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.mf-tile{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.mf-tile small{display:block;color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mf-tile b{font-size:18px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.mf-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
+.mf-table th,.mf-table td{text-align:left;padding:5px 4px;border-top:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+.mf-table th{color:var(--muted);font-weight:500}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:10}
 #toast.show{opacity:1;transform:translateX(-50%)}
 
@@ -177,6 +186,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
  <section id="v-home">
   <h2 id="hello">Bien le bonjour Boss</h2>
   <p class="sub" id="today-date"></p>
+  <div class="homegrid"><div style="min-width:0">
   <div class="grid3">
    <div class="card"><h3>Agenda du jour <button class="link" data-go="agenda">Ouvrir</button></h3><ul class="plain" id="home-events"></ul></div>
    <div class="card"><h3>À faire <button class="link" data-go="todo">Ouvrir</button></h3><ul class="plain" id="home-todos"></ul></div>
@@ -193,6 +203,9 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
     <button class="icon" id="hw-next" aria-label="Suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></button>
    </div>
    <div class="cols" id="hw-cols"></div>
+  </div>
+  </div>
+  <aside class="card" id="mf"></aside>
   </div>
  </section>
 
@@ -337,7 +350,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 // ---------- outils
 const $=s=>document.querySelector(s);
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch{return d}};
-const SYNCED=['hub.events','hub.todos','hub.notes','hub.vault','hub.models'];
+const SYNCED=['hub.events','hub.todos','hub.notes','hub.vault','hub.models','hub.myfeed'];
 let syncApplying=false,syncTimer=null;
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{toast('Impossible d’enregistrer (stockage bloqué)')}if(SYNCED.includes(k)&&!syncApplying)scheduleSync()};
 function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(),1500)}
@@ -356,6 +369,7 @@ function ago(ts){const s=(Date.now()-ts)/1000;if(s<60)return'à l’instant';if(
 try{navigator.storage?.persist?.()}catch{}
 
 let events=load('hub.events',[]),todos=load('hub.todos',[]),notes=load('hub.notes',[]);
+let mfcfg=load('hub.myfeed',{key:'',url:'',u:0}),mfData=null,mfErr='',mfEdit=false,mfLoading=false; // MyFeed : propre à chaque compte
 let models=load('hub.models',[]); // modèles auxquels on assigne des tâches
 let tomb=load('hub.tomb',{}); // éléments supprimés (pour que la suppression se propage aux autres appareils)
 function markDeleted(id){tomb[id]=Date.now();try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}}
@@ -373,7 +387,7 @@ function renderHome(){
  $('#hello').textContent=h>=18||h<5?'Bien le bonsoir Boss':'Bien le bonjour Boss';
  $('#today-date').textContent=fmtLong(t);
  const now=new Date();loadMonth(now.getFullYear(),now.getMonth());
- shown=[];renderHomeWeek();
+ shown=[];renderHomeWeek();renderMyFeed();
  const ev=dayEvents(t);
  $('#home-events').innerHTML=ev.length?ev.map(e=>`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="trunc">${tag(e)}${esc(e.title)}</span></li>`).join(''):'<li class="empty">Rien de prévu aujourd’hui</li>';
  const td=todos.filter(x=>!x.done).sort(byDue).slice(0,6);
@@ -453,7 +467,8 @@ function mergeAll(l,r){
  const ml=(a,b)=>{const m=new Map();for(const x of[...(a||[]),...(b||[])]){const c=m.get(x.id);if(!c||stamp(x)>stamp(c))m.set(x.id,x)}return[...m.values()].filter(x=>!(t[x.id]&&t[x.id]>=stamp(x)))};
  const va=l.vault,vb=r.vault,vault=!va?vb:!vb?va:((vb.ts||0)>(va.ts||0)?vb:va);
  const models=[...new Set([...(l.models||[]),...(r.models||[])])].filter(m=>!t['model:'+m]);
- return{events:ml(l.events,r.events),todos:ml(l.todos,r.todos),notes:ml(l.notes,r.notes),models,vault:vault||null,tomb:t}}
+ const myfeed=((r.myfeed?.u||0)>(l.myfeed?.u||0)?r.myfeed:l.myfeed)||null;
+ return{events:ml(l.events,r.events),todos:ml(l.todos,r.todos),notes:ml(l.notes,r.notes),models,myfeed,vault:vault||null,tomb:t}}
 async function syncNow(){
  if(!gOn()||!gcfg.connected)return;
  if(SY.busy){SY.again=true;return}
@@ -461,12 +476,13 @@ async function syncNow(){
  try{
   if(!SY.file){const q=encodeURIComponent("name='mon-espace.json'");const r=await gapi(`${DRIVE}?spaces=appDataFolder&q=${q}&fields=files(id)`);SY.file=r.files?.[0]?.id||null}
   const remote=SY.file?await gapi(`${DRIVE}/${SY.file}?alt=media`):null;
-  const local={events,todos,notes,models,vault:load('hub.vault',null),tomb};
+  const local={events,todos,notes,models,myfeed:mfcfg.u?mfcfg:null,vault:load('hub.vault',null),tomb};
   const m=remote?mergeAll(local,remote):local;
   const oldVault=JSON.stringify(local.vault),changed=JSON.stringify(m)!==JSON.stringify(local);
   if(changed){
    syncApplying=true;
    events=m.events;todos=m.todos;notes=m.notes;models=m.models||[];tomb=m.tomb;
+   if(m.myfeed&&m.myfeed.u!==mfcfg.u){mfcfg=m.myfeed;save('hub.myfeed',mfcfg);mfData=null}
    save('hub.models',models);save('hub.events',events);save('hub.todos',todos);save('hub.notes',notes);try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}
    if(m.vault)save('hub.vault',m.vault);
    syncApplying=false;
@@ -798,6 +814,56 @@ $('#entry-form').onsubmit=async e=>{e.preventDefault();if(!V.key)return dlg.clos
  if(V.edit)Object.assign(V.edit,data);else V.items.push({id:uid(),...data});
  await vaultSave();dlg.close();renderVaultList();toast('Enregistré')};
 
+
+// ---------- dashboard MyFeed (clé API propre à chaque session)
+const human=k=>cap(String(k).replace(/[_-]+/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').toLowerCase());
+const fmtVal=v=>typeof v==='number'?v.toLocaleString('fr-FR',{maximumFractionDigits:2}):String(v);
+function mfFlatten(o,pre='',out={tiles:[],tables:[]},depth=0){
+ if(Array.isArray(o)){if(o.length&&typeof o[0]==='object')out.tables.push({name:pre||'Liste',rows:o});return out}
+ for(const[k,v]of Object.entries(o||{})){if(k==='__t')continue;const name=pre?pre+' · '+human(k):human(k);
+  if(v==null)continue;
+  if(typeof v==='number'||typeof v==='boolean'||(typeof v==='string'&&v.length<=40))out.tiles.push([name,v]);
+  else if(Array.isArray(v)){if(v.length&&typeof v[0]==='object')out.tables.push({name,rows:v});else if(v.length)out.tiles.push([name,v.length+' éléments'])}
+  else if(typeof v==='object'&&depth<2)mfFlatten(v,name,out,depth+1)}
+ return out}
+async function mfFetch(){
+ if(!mfcfg.key||!mfcfg.url)return;mfLoading=true;mfErr='';renderMyFeed();
+ try{const r=await fetch(mfcfg.url,{headers:{Authorization:'Bearer '+mfcfg.key,'X-API-Key':mfcfg.key,Accept:'application/json'}});
+  if(!r.ok)throw new Error(r.status===401||r.status===403?'Clé API refusée ('+r.status+').':'Erreur MyFeed ('+r.status+').');
+  mfData=await r.json();if(mfData&&typeof mfData==='object')mfData.__t=Date.now()}
+ catch(e){mfErr=e instanceof TypeError?'Impossible de joindre l’API (adresse incorrecte ou accès bloqué par MyFeed).':e instanceof SyntaxError?'La réponse de l’API n’est pas du JSON : vérifie l’adresse.':e.message}
+ mfLoading=false;renderMyFeed()}
+function renderMyFeed(){
+ const el=$('#mf');if(!el||el.contains(document.activeElement))return;
+ const head=`<h3>Dashboard MyFeed <span class="row" style="gap:2px">${mfcfg.key&&mfcfg.url?`<button class="icon" id="mf-ref" title="Actualiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>`:''}${mfcfg.key?`<button class="icon" id="mf-set" title="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button>`:''}</span></h3>`;
+ const open='<a class="btn ghost" href="https://myfeed.fans" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;text-decoration:none;margin-top:12px">Ouvrir MyFeed ↗</a>';
+ if(!mfcfg.key||mfEdit){
+  el.innerHTML=head+`<form id="mf-form" style="display:flex;flex-direction:column;gap:8px">
+   <p class="warn" style="margin:0 0 4px">Ajoute ta clé API MyFeed pour afficher ton propre dashboard. Elle reste dans ta session : personne d’autre ne la voit.</p>
+   <input type="password" id="mf-key" placeholder="Clé API MyFeed" autocomplete="off" value="${esc(mfcfg.key)}" required>
+   <input type="url" id="mf-url" placeholder="Adresse de l’API (ex. https://myfeed.fans/api/…)" value="${esc(mfcfg.url)}">
+   <div class="row"><button class="btn grow">Enregistrer</button>${mfcfg.key?'<button type="button" class="btn ghost" id="mf-cancel">Annuler</button>':''}</div>
+   ${mfcfg.key?'<button type="button" class="link" id="mf-del" style="color:var(--danger);align-self:flex-start">Supprimer la clé</button>':''}
+  </form>`+open;return}
+ let body='';
+ if(!mfcfg.url)body='<p class="warn" style="margin:0">Clé enregistrée ✓. Ajoute l’adresse de l’API (indiquée dans ton espace MyFeed) via ⚙ pour voir tes chiffres ici.</p>';
+ else if(mfLoading&&!mfData)body='<p class="empty" style="margin:0">Chargement…</p>';
+ else if(mfErr)body=`<p class="err" style="margin:0">${esc(mfErr)}</p>`;
+ else if(mfData){const f=mfFlatten(mfData);
+  body=(f.tiles.length?`<div class="mf-tiles">${f.tiles.slice(0,12).map(([k,v])=>`<div class="mf-tile"><small title="${esc(k)}">${esc(k)}</small><b>${esc(fmtVal(v))}</b></div>`).join('')}</div>`:'')+
+   f.tables.slice(0,2).map(t=>{const cols=Object.keys(t.rows[0]).filter(c=>typeof t.rows[0][c]!=='object').slice(0,4);return`<table class="mf-table"><caption style="text-align:left;color:var(--muted);font-size:12px;padding-top:10px">${esc(t.name)}</caption><tr>${cols.map(c=>`<th>${esc(human(c))}</th>`).join('')}</tr>${t.rows.slice(0,8).map(r=>`<tr>${cols.map(c=>`<td title="${esc(r[c]??'')}">${esc(fmtVal(r[c]??''))}</td>`).join('')}</tr>`).join('')}</table>`}).join('');
+  if(!body)body='<p class="empty" style="margin:0">Aucune donnée.</p>';
+  if(mfData.__t)body+=`<p class="meta" style="margin:10px 0 0">Mis à jour ${ago(mfData.__t)}</p>`}
+ el.innerHTML=head+body+open;
+ if(mfcfg.url&&!mfData&&!mfLoading&&!mfErr)mfFetch()}
+$('#mf').addEventListener('click',e=>{const id=e.target.closest('button')?.id;
+ if(id==='mf-ref'){mfData=null;mfFetch()}
+ else if(id==='mf-set'){mfEdit=true;renderMyFeed()}
+ else if(id==='mf-cancel'){mfEdit=false;document.activeElement?.blur?.();renderMyFeed()}
+ else if(id==='mf-del'){if(!confirm('Supprimer ta clé API MyFeed de cette session ?'))return;mfcfg={key:'',url:'',u:Date.now()};save('hub.myfeed',mfcfg);mfData=null;mfErr='';mfEdit=false;document.activeElement?.blur?.();renderMyFeed()}});
+$('#mf').addEventListener('submit',e=>{e.preventDefault();
+ mfcfg={key:$('#mf-key').value.trim(),url:$('#mf-url').value.trim(),u:Date.now()};save('hub.myfeed',mfcfg);
+ mfData=null;mfErr='';mfEdit=false;document.activeElement?.blur?.();renderMyFeed();toast('Clé MyFeed enregistrée')});
 
 // ---------- écran d'accueil (connexion par email)
 function showWelcome(){let skip=false;try{skip=!!localStorage.getItem('hub.skipwelcome')}catch{}
