@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mon Espace</title>
+<style>
+:root{color-scheme:dark;--bg:#111113;--panel:#1a1a1d;--text:#ececee;--muted:#8d8d93;--line:#2a2a2f;--accent:#7b93fc;--soft:#222944;--danger:#f06595;--ok:#51cf66;--r:12px}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+button,input,textarea,select{font:inherit;color:inherit}
+nav{width:220px;flex:none;padding:28px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh}
+nav h1{font-size:16px;margin:0 12px 22px;letter-spacing:-.01em;font-weight:650}
+nav h1 span{color:var(--accent)}
+nav button{all:unset;cursor:pointer;padding:9px 12px;border-radius:9px;color:var(--muted);display:flex;gap:11px;align-items:center;font-size:14.5px}
+nav button svg{width:18px;height:18px;flex:none}
+nav button:hover{color:var(--text);background:var(--panel)}
+nav button.on{background:var(--soft);color:var(--accent);font-weight:600}
+main{flex:1;min-width:0;padding:36px 44px 60px;max-width:1150px}
+h2{font-size:24px;margin:0 0 4px;letter-spacing:-.02em;font-weight:650}
+.sub{color:var(--muted);margin:0 0 26px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+.card h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+ul.plain{list-style:none;margin:0;padding:0}
+ul.plain li{padding:8px 0;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;min-width:0}
+ul.plain li:first-child{border-top:0}
+.empty{color:var(--muted);font-size:14px}
+.time{color:var(--accent);font-variant-numeric:tabular-nums;font-weight:600;font-size:13.5px;min-width:44px}
+.link{all:unset;cursor:pointer;color:var(--accent);font-size:12.5px;text-transform:none;letter-spacing:0;font-weight:500}
+input[type=text],input[type=password],input[type=search],input[type=date],input[type=time],input[type=url],input[type=email],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 12px;outline:none;width:100%}
+input:focus,textarea:focus{border-color:var(--accent)}
+.btn{border:0;background:var(--accent);color:#fff;border-radius:9px;padding:9px 16px;cursor:pointer;font-weight:600;white-space:nowrap}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500}
+.btn.ghost:hover{background:var(--bg)}
+.btn.danger{background:transparent;color:var(--danger);border:1px solid var(--line);font-weight:500}
+.icon{all:unset;cursor:pointer;color:var(--muted);width:30px;height:30px;display:grid;place-items:center;border-radius:7px;flex:none}
+.icon:hover{background:var(--bg);color:var(--text)}
+.icon svg{width:16px;height:16px}
+.row{display:flex;gap:8px;align-items:center}
+.grow{flex:1;min-width:0}
+.trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+[hidden]{display:none!important}
+
+/* agenda */
+.agenda{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+.calhead{display:flex;align-items:center;gap:6px;margin-bottom:14px}
+.calhead strong{font-size:17px;flex:1}
+.dow,.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow div{font-size:12px;color:var(--muted);text-align:center;padding-bottom:4px}
+.day{all:unset;cursor:pointer;min-height:86px;border-radius:9px;padding:6px 7px;display:flex;flex-direction:column;gap:3px;border:1px solid transparent;min-width:0}
+.day:hover{background:var(--bg)}
+.day .n{font-size:13px;font-weight:600;width:24px;height:24px;display:grid;place-items:center;border-radius:50%}
+.day.out .n{color:var(--muted);font-weight:400}
+.day.today .n{background:var(--accent);color:#fff}
+.day.sel{border-color:var(--accent);background:var(--soft)}
+.chip{--c:var(--accent);font-size:11.5px;background:color-mix(in srgb,var(--c) 28%,transparent);color:var(--text);border-left:3px solid var(--c);border-radius:4px;padding:1px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{--c:var(--accent);width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+.calrow{display:flex;gap:10px;align-items:center;padding:6px 0;cursor:pointer;font-size:14px}
+.calrow input{margin:0;accent-color:var(--accent)}
+.evcal{display:block;font-size:12px;color:var(--muted)}
+.more{font-size:11px;color:var(--muted);padding-left:4px}
+.addform{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+
+/* todo */
+.todo-add{display:flex;gap:8px;margin-bottom:14px}
+.todo-add input[type=date]{width:160px}
+.filters{display:flex;gap:4px;margin-bottom:10px;align-items:center}
+.filters button{all:unset;cursor:pointer;padding:5px 12px;border-radius:20px;font-size:13.5px;color:var(--muted)}
+.filters button.on{background:var(--soft);color:var(--accent);font-weight:600}
+.check{appearance:none;width:20px;height:20px;border:2px solid var(--line);border-radius:6px;cursor:pointer;flex:none;display:grid;place-items:center;margin:0}
+.check:checked{background:var(--ok);border-color:var(--ok)}
+.check:checked::after{content:"";width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+li.done .txt{text-decoration:line-through;color:var(--muted)}
+.due{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.due.late{color:var(--danger);font-weight:600}
+.due.now{color:var(--accent);font-weight:600}
+
+/* notes */
+.notes{display:grid;grid-template-columns:270px 1fr;gap:16px;align-items:start}
+ul.plain.notelist li{cursor:pointer;flex-direction:column;align-items:stretch;gap:0;padding:10px 12px;border-radius:9px;border:0;margin-bottom:2px}
+.notelist li:hover{background:var(--bg)}
+.notelist li.on{background:var(--soft)}
+.notelist b{font-weight:600;font-size:14.5px}
+.notelist small{color:var(--muted);font-size:12.5px}
+.editor{display:flex;flex-direction:column;gap:10px;min-height:60vh}
+.editor input{font-size:20px;font-weight:650;border:0;background:transparent;padding:4px 0}
+.editor textarea{flex:1;min-height:55vh;border:0;background:transparent;padding:4px 0;resize:none;line-height:1.65}
+.meta{font-size:12.5px;color:var(--muted)}
+
+/* vault */
+.lockbox{max-width:400px;margin:40px auto;text-align:center;display:flex;flex-direction:column;gap:12px}
+.lockbox .big{width:54px;height:54px;margin:0 auto 4px;border-radius:16px;background:var(--soft);color:var(--accent);display:grid;place-items:center}
+.lockbox .big svg{width:26px;height:26px}
+.err{color:var(--danger);font-size:14px;min-height:20px}
+.warn{font-size:13px;color:var(--muted);line-height:1.5}
+.vrow{display:grid;grid-template-columns:36px 1fr 1fr auto;gap:12px;align-items:center;padding:11px 4px;border-top:1px solid var(--line)}
+.vrow:first-child{border-top:0}
+.avatar{width:36px;height:36px;border-radius:10px;background:var(--soft);color:var(--accent);display:grid;place-items:center;font-weight:700;text-transform:uppercase}
+.pw{font-family:ui-monospace,Consolas,monospace;font-size:13.5px}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);padding:22px;width:min(440px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+dialog form{display:flex;flex-direction:column;gap:10px}
+dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.strength{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.strength i{display:block;height:100%;width:0;transition:.2s}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:10}
+#toast.show{opacity:1;transform:translateX(-50%)}
+
+@media (max-width:820px){
+ body{flex-direction:column}
+ nav{position:fixed;bottom:0;top:auto;left:0;right:0;width:auto;height:auto;flex-direction:row;justify-content:space-around;padding:6px;border-right:0;border-top:1px solid var(--line);background:var(--panel);z-index:5}
+ nav h1{display:none}
+ nav button{flex-direction:column;gap:2px;font-size:11px;padding:6px 8px}
+ main{padding:22px 16px 90px}
+ .grid3,.agenda,.notes{grid-template-columns:1fr}
+ .day{min-height:48px;padding:4px}
+ .chip{font-size:0;padding:0;height:6px;width:6px;border:0;border-radius:50%;background:var(--c)}
+ .todo-add{flex-wrap:wrap}
+ .todo-add input[type=date]{width:auto;flex:1}
+ .vrow{grid-template-columns:36px 1fr auto}
+ .vrow .pwcol{display:none}
+ .editor textarea{min-height:40vh}
+}
+</style>
+</head>
+<body>
+
+<nav>
+ <h1>Mon <span>Espace</span></h1>
+ <button data-v="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Aujourd’hui</button>
+ <button data-v="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Agenda</button>
+ <button data-v="todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Tâches</button>
+ <button data-v="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Notes</button>
+ <button data-v="vault"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Coffre</button>
+</nav>
+
+<main>
+ <!-- AUJOURD'HUI -->
+ <section id="v-home">
+  <h2 id="hello">Bonjour</h2>
+  <p class="sub" id="today-date"></p>
+  <div class="grid3">
+   <div class="card"><h3>Agenda du jour <button class="link" data-go="agenda">Ouvrir</button></h3><ul class="plain" id="home-events"></ul></div>
+   <div class="card"><h3>À faire <button class="link" data-go="todo">Ouvrir</button></h3><ul class="plain" id="home-todos"></ul></div>
+   <div class="card"><h3>Notes récentes <button class="link" data-go="notes">Ouvrir</button></h3><ul class="plain" id="home-notes"></ul></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+   <h3>Sauvegarde</h3>
+   <p class="warn" style="margin:0 0 12px">Tout est enregistré uniquement dans ce navigateur, sur cet ordinateur. Exporte une sauvegarde de temps en temps (le coffre y reste chiffré).</p>
+   <div class="row"><button class="btn ghost" id="export">Exporter</button><button class="btn ghost" id="import">Importer</button><input type="file" id="importfile" accept=".json" hidden></div>
+  </div>
+ </section>
+
+ <!-- AGENDA -->
+ <section id="v-agenda" hidden>
+  <h2>Agenda</h2><p class="sub">Clique sur un jour pour voir ou ajouter un événement.</p>
+  <div class="agenda">
+   <div class="card">
+    <div class="calhead">
+     <strong id="cal-title"></strong>
+     <span class="due" id="cal-status"></span>
+     <button class="icon" id="cal-refresh" title="Actualiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+     <button class="btn ghost" id="cal-today" style="padding:6px 12px">Aujourd’hui</button>
+     <button class="icon" id="cal-prev" aria-label="Mois précédent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button>
+     <button class="icon" id="cal-next" aria-label="Mois suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+    <div class="dow"><div>lun</div><div>mar</div><div>mer</div><div>jeu</div><div>ven</div><div>sam</div><div>dim</div></div>
+    <div class="cal" id="cal-grid"></div>
+   </div>
+   <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <div class="card">
+     <h3 id="day-title" style="text-transform:none;letter-spacing:0;font-size:16px;color:var(--text)"></h3>
+     <ul class="plain" id="day-events"></ul>
+     <form class="addform" id="ev-form">
+      <div class="row"><input type="time" id="ev-time" style="width:120px"><input type="text" id="ev-title" placeholder="Nouvel événement" required></div>
+      <select id="ev-cal" title="Agenda"></select>
+      <button class="btn" id="ev-btn">Ajouter</button>
+     </form>
+    </div>
+    <div class="card" id="gpanel"></div>
+   </div>
+  </div>
+ </section>
+
+ <!-- TACHES -->
+ <section id="v-todo" hidden>
+  <h2>Tâches</h2><p class="sub" id="todo-sub"></p>
+  <div class="card">
+   <form class="todo-add" id="todo-form">
+    <input type="text" id="todo-text" class="grow" placeholder="Ajouter une tâche…" required style="flex:1;min-width:180px">
+    <input type="date" id="todo-due" title="Échéance (facultatif)">
+    <button class="btn">Ajouter</button>
+   </form>
+   <div class="filters" id="todo-filters">
+    <button data-f="active" class="on">À faire</button><button data-f="done">Terminées</button><button data-f="all">Toutes</button>
+    <span class="grow"></span><button id="todo-clear" style="color:var(--danger)">Vider les terminées</button>
+   </div>
+   <ul class="plain" id="todo-list"></ul>
+  </div>
+ </section>
+
+ <!-- NOTES -->
+ <section id="v-notes" hidden>
+  <h2>Notes</h2><p class="sub">Enregistrement automatique.</p>
+  <div class="notes">
+   <div class="card" style="padding:12px">
+    <div class="row" style="margin-bottom:10px"><input type="search" id="note-search" placeholder="Rechercher"><button class="btn" id="note-new" title="Nouvelle note" style="padding:9px 13px">+</button></div>
+    <ul class="plain notelist" id="note-list"></ul>
+   </div>
+   <div class="card editor" id="note-editor">
+    <div class="row"><input type="text" id="note-title" class="grow" placeholder="Titre"><button class="icon" id="note-del" title="Supprimer la note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg></button></div>
+    <div class="meta" id="note-meta"></div>
+    <textarea id="note-body" placeholder="Écris ici…"></textarea>
+   </div>
+   <div class="card empty" id="note-none" style="display:grid;place-items:center;min-height:40vh">Aucune note sélectionnée — crée-en une avec +</div>
+  </div>
+ </section>
+
+ <!-- COFFRE -->
+ <section id="v-vault" hidden>
+  <h2>Coffre-fort</h2><p class="sub">Chiffré AES-256 avec ton mot de passe maître. Rien n’est stocké en clair.</p>
+
+  <form class="card lockbox" id="vault-setup" hidden>
+   <div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/></svg></div>
+   <strong>Créer ton coffre</strong>
+   <input type="password" id="setup-pw" placeholder="Mot de passe maître (12 caractères min.)" autocomplete="new-password">
+   <div class="strength"><i id="setup-meter"></i></div>
+   <input type="password" id="setup-pw2" placeholder="Confirmer" autocomplete="new-password">
+   <div class="err" id="setup-err"></div>
+   <button class="btn">Créer le coffre</button>
+   <p class="warn">⚠️ Ce mot de passe n’est stocké nulle part. Si tu l’oublies, le contenu du coffre est <b>définitivement</b> perdu.</p>
+  </form>
+
+  <form class="card lockbox" id="vault-lock" hidden>
+   <div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+   <strong>Coffre verrouillé</strong>
+   <input type="password" id="unlock-pw" placeholder="Mot de passe maître" autocomplete="current-password">
+   <div class="err" id="unlock-err"></div>
+   <button class="btn" id="unlock-btn">Déverrouiller</button>
+  </form>
+
+  <div id="vault-open" hidden>
+   <div class="row" style="margin-bottom:14px">
+    <input type="search" id="vault-search" class="grow" placeholder="Rechercher un compte">
+    <button class="btn" id="vault-add">Ajouter</button>
+    <button class="btn ghost" id="vault-lockbtn">Verrouiller</button>
+   </div>
+   <div class="card" style="padding:6px 16px"><div id="vault-list"></div></div>
+   <p class="warn" style="margin-top:12px">Verrouillage automatique après 5 min d’inactivité · le presse-papiers est vidé 30 s après une copie.</p>
+  </div>
+ </section>
+</main>
+
+<dialog id="entry-dlg">
+ <form method="dialog" id="entry-form">
+  <strong id="entry-head" style="font-size:17px">Nouveau compte</strong>
+  <label>Nom / site<input type="text" id="e-name" required placeholder="Gmail, Netflix…"></label>
+  <label>Identifiant<input type="text" id="e-user" placeholder="email ou pseudo" autocomplete="off"></label>
+  <label>Mot de passe
+   <div class="row"><input type="password" id="e-pass" class="grow" autocomplete="new-password">
+    <button type="button" class="icon" id="e-show" title="Afficher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    <button type="button" class="icon" id="e-gen" title="Générer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+   </div>
+   <div class="strength"><i id="e-meter"></i></div>
+  </label>
+  <label>Adresse web<input type="url" id="e-url" placeholder="https://"></label>
+  <label>Note<textarea id="e-note" rows="2"></textarea></label>
+  <div class="row" style="margin-top:6px"><button type="button" class="btn ghost" id="e-cancel">Annuler</button><span class="grow"></span><button class="btn" value="ok">Enregistrer</button></div>
+ </form>
+</dialog>
+
+<div id="toast"></div>
+
+<script>
+// ---------- outils
+const $=s=>document.querySelector(s);
+const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch{return d}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{toast('Impossible d’enregistrer (stockage bloqué)')}};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today=()=>ymd(new Date());
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const fmtLong=s=>cap(new Date(s+'T00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}));
+const fmtShort=s=>new Date(s+'T00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+const byTime=(a,b)=>(a.time||'99').localeCompare(b.time||'99');
+const byDue=(a,b)=>(a.due||'9999').localeCompare(b.due||'9999')||a.created-b.created;
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200)}
+function ago(ts){const s=(Date.now()-ts)/1000;if(s<60)return'à l’instant';if(s<3600)return`il y a ${Math.floor(s/60)} min`;if(s<86400)return`il y a ${Math.floor(s/3600)} h`;return new Date(ts).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})}
+try{navigator.storage?.persist?.()}catch{}
+
+let events=load('hub.events',[]),todos=load('hub.todos',[]),notes=load('hub.notes',[]);
+
+// ---------- navigation
+const views=['home','agenda','todo','notes','vault'];
+const render={home:renderHome,agenda:renderAgenda,todo:renderTodos,notes:renderNotes,vault:renderVault};
+function show(v){if(!views.includes(v))v='home';views.forEach(x=>$('#v-'+x).hidden=x!==v);document.querySelectorAll('nav [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));try{localStorage.setItem('hub.view',v)}catch{}render[v]();window.scrollTo(0,0)}
+document.querySelectorAll('nav [data-v]').forEach(b=>b.onclick=()=>show(b.dataset.v));
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
+
+// ---------- aujourd'hui
+function renderHome(){
+ const t=today(),h=new Date().getHours();
+ $('#hello').textContent=h>=18||h<5?'Bonsoir':'Bonjour';
+ $('#today-date').textContent=fmtLong(t);
+ const now=new Date();loadMonth(now.getFullYear(),now.getMonth());
+ const ev=dayEvents(t);
+ $('#home-events').innerHTML=ev.length?ev.map(e=>`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="trunc">${esc(e.title)}</span></li>`).join(''):'<li class="empty">Rien de prévu aujourd’hui</li>';
+ const td=todos.filter(x=>!x.done).sort(byDue).slice(0,6);
+ $('#home-todos').innerHTML=td.length?td.map(x=>`<li><input type="checkbox" class="check" data-done="${x.id}"><span class="grow trunc">${esc(x.text)}</span>${dueBadge(x)}</li>`).join(''):'<li class="empty">Tout est fait 🎉</li>';
+ const nt=[...notes].sort((a,b)=>b.updated-a.updated).slice(0,4);
+ $('#home-notes').innerHTML=nt.length?nt.map(n=>`<li style="cursor:pointer" data-note="${n.id}"><span class="grow trunc">${esc(n.title||'Sans titre')}</span><span class="due">${ago(n.updated)}</span></li>`).join(''):'<li class="empty">Aucune note</li>';
+}
+$('#home-todos').onchange=e=>{const id=e.target.dataset.done;if(!id)return;const x=todos.find(t=>t.id===id);if(x){x.done=true;save('hub.todos',todos);setTimeout(renderHome,250)}};
+$('#home-notes').onclick=e=>{const li=e.target.closest('[data-note]');if(li){curNote=li.dataset.note;show('notes')}};
+
+// ---------- Google Agenda (synchro PC / Mac / associé)
+// Colle ici l'ID client Google pour qu'il soit pré-rempli sur tous tes appareils :
+const DEFAULT_CLIENT_ID='';
+const SCOPE='https://www.googleapis.com/auth/calendar';
+const TZ=Intl.DateTimeFormat().resolvedOptions().timeZone;
+const G={client:null,token:null,exp:0,cals:[],cache:{},err:''};
+let gcfg=load('hub.gcal',{clientId:'',shown:[],target:'local'});
+if(!gcfg.clientId&&DEFAULT_CLIENT_ID)gcfg.clientId=DEFAULT_CLIENT_ID;
+try{const t=JSON.parse(sessionStorage.getItem('hub.gtok'));if(t&&t.e>Date.now()+60000){G.token=t.t;G.exp=t.e}}catch{}
+const gOn=()=>!!G.token&&Date.now()<G.exp-30000;
+const safeColor=c=>/^#[0-9a-f]{3,8}$/i.test(c||'')?c:'var(--accent)';
+const calName=c=>c.summaryOverride||c.summary||c.id;
+const canWrite=c=>c.accessRole==='owner'||c.accessRole==='writer';
+function rerenderCal(){if(!$('#v-agenda').hidden)renderAgenda();else if(!$('#v-home').hidden)renderHome()}
+window.gisLoaded=()=>{initGClient();if(gOn())gStart()};
+function initGClient(){
+ if(G.client||!gcfg.clientId||!window.google?.accounts?.oauth2)return;
+ G.client=google.accounts.oauth2.initTokenClient({client_id:gcfg.clientId,scope:SCOPE,
+  callback:r=>{if(r.error){G.err='Connexion refusée ('+r.error+')';rerenderCal();return}
+   G.token=r.access_token;G.exp=Date.now()+(r.expires_in||3600)*1000;G.err='';
+   try{sessionStorage.setItem('hub.gtok',JSON.stringify({t:G.token,e:G.exp}))}catch{}
+   gcfg.connected=true;save('hub.gcal',gcfg);gStart()},
+  error_callback:e=>{G.err=e?.type==='popup_closed'?'Fenêtre Google fermée.':'Fenêtre Google bloquée : autorise les popups pour ce site.';rerenderCal()}});
+}
+function gConnect(){initGClient();if(!G.client){toast('Google se charge encore, réessaie dans 2 s');return}G.client.requestAccessToken({prompt:gcfg.connected?'':'consent'})}
+function gDisconnect(){
+ if(G.token&&window.google?.accounts?.oauth2)google.accounts.oauth2.revoke(G.token,()=>{});
+ G.token=null;G.exp=0;G.cals=[];G.cache={};gcfg.connected=false;gcfg.target='local';save('hub.gcal',gcfg);
+ try{sessionStorage.removeItem('hub.gtok')}catch{}rerenderCal()}
+async function gapi(path,opt={}){
+ if(!gOn())throw Object.assign(new Error('Session Google expirée, reconnecte-toi.'),{auth:true});
+ const r=await fetch('https://www.googleapis.com/calendar/v3'+path,{...opt,headers:{Authorization:'Bearer '+G.token,'Content-Type':'application/json'}});
+ if(r.status===401){G.token=null;throw Object.assign(new Error('Session Google expirée, reconnecte-toi.'),{auth:true})}
+ if(!r.ok){let m='Erreur Google ('+r.status+')';try{m=(await r.json()).error.message||m}catch{}throw new Error(m)}
+ return r.status===204?null:r.json()}
+async function gStart(){
+ try{const r=await gapi('/users/me/calendarList');
+  G.cals=(r.items||[]).filter(c=>!c.deleted&&c.accessRole!=='freeBusyReader').sort((a,b)=>(b.primary?1:0)-(a.primary?1:0)||calName(a).localeCompare(calName(b),'fr'));
+  const ids=G.cals.map(c=>c.id);
+  gcfg.shown=(gcfg.shown||[]).filter(id=>ids.includes(id));
+  if(!gcfg.shown.length)gcfg.shown=G.cals.filter(c=>c.primary||c.selected).map(c=>c.id);
+  if(!gcfg.targetSet||(gcfg.target!=='local'&&!ids.includes(gcfg.target))){gcfg.target=G.cals.find(c=>c.primary)?.id||'local';gcfg.targetSet=true}
+  save('hub.gcal',gcfg);G.cache={};G.err=''}
+ catch(e){G.err=e.message}
+ rerenderCal()}
+function normG(ev,c){
+ const base={id:ev.id,calId:c.id,title:ev.summary||'(Sans titre)',color:safeColor(c.backgroundColor),src:'g',cal:calName(c),link:ev.htmlLink,canEdit:canWrite(c)};
+ if(ev.start?.date){const out=[];const d=new Date(ev.start.date+'T00:00'),end=new Date(ev.end.date+'T00:00');for(let n=0;d<end&&n<62;n++){out.push({...base,date:ymd(d),time:''});d.setDate(d.getDate()+1)}return out}
+ if(!ev.start?.dateTime)return[];
+ const s=new Date(ev.start.dateTime);return[{...base,date:ymd(s),time:pad(s.getHours())+':'+pad(s.getMinutes())}]}
+async function loadMonth(y,m,force){
+ const key=y+'-'+m,c=G.cache[key];
+ if(!gOn()||!G.cals.length)return;
+ if(c&&(c.loading||(!force&&Date.now()-c.t<5*60000)))return;
+ G.cache[key]={items:c?.items||[],t:c?.t||0,loading:true};
+ const start=new Date(y,m,-7),end=new Date(y,m+1,15);
+ try{
+  const lists=await Promise.all(G.cals.filter(k=>gcfg.shown.includes(k.id)).map(async k=>{
+   const out=[];let pt='';
+   do{const q=new URLSearchParams({timeMin:start.toISOString(),timeMax:end.toISOString(),singleEvents:'true',orderBy:'startTime',maxResults:'250'});if(pt)q.set('pageToken',pt);
+    const r=await gapi(`/calendars/${encodeURIComponent(k.id)}/events?${q}`);
+    for(const ev of r.items||[])if(ev.status!=='cancelled')out.push(...normG(ev,k));pt=r.nextPageToken}while(pt);
+   return out}));
+  G.cache[key]={items:lists.flat(),t:Date.now()};G.err=''}
+ catch(e){G.cache[key]={items:c?.items||[],t:Date.now()};G.err=e.message}
+ rerenderCal()}
+function dayEvents(k){
+ const out=events.filter(e=>e.date===k).map(e=>({...e,src:'l',cal:'Cet appareil',color:'var(--accent)',canEdit:true}));
+ const seen=new Set();
+ for(const c of Object.values(G.cache))for(const e of c.items||[])if(e.date===k&&gcfg.shown.includes(e.calId)&&!seen.has(e.calId+'|'+e.id)){seen.add(e.calId+'|'+e.id);out.push(e)}
+ return out.sort(byTime)}
+
+// ---------- agenda
+let cal=new Date();cal.setDate(1);let sel=today(),dayList=[];
+const X='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+const OPEN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>';
+function renderAgenda(){
+ const y=cal.getFullYear(),m=cal.getMonth(),t=today();
+ loadMonth(y,m);
+ $('#cal-title').textContent=cap(cal.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}));
+ $('#cal-status').textContent=G.cache[y+'-'+m]?.loading?'Synchro…':'';
+ $('#cal-refresh').hidden=!gOn();
+ const first=(new Date(y,m,1).getDay()+6)%7;let html='';
+ for(let i=0;i<42;i++){
+  const d=new Date(y,m,1-first+i),k=ymd(d),evs=dayEvents(k);
+  html+=`<button class="day${d.getMonth()!==m?' out':''}${k===t?' today':''}${k===sel?' sel':''}" data-day="${k}"><span class="n">${d.getDate()}</span>${evs.slice(0,2).map(e=>`<span class="chip" style="--c:${e.color}">${esc(e.title)}</span>`).join('')}${evs.length>2?`<span class="more">+${evs.length-2}</span>`:''}</button>`;
+ }
+ $('#cal-grid').innerHTML=html;
+ $('#day-title').textContent=fmtLong(sel);
+ dayList=dayEvents(sel);
+ const many=gOn()&&G.cals.length;
+ $('#day-events').innerHTML=dayList.length?dayList.map((e,i)=>`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="grow" style="min-width:0"><span class="trunc" style="display:block">${esc(e.title)}</span>${many?`<span class="evcal trunc">${esc(e.cal)}</span>`:''}</span>${e.link?`<a class="icon" href="${esc(e.link)}" target="_blank" rel="noopener noreferrer" title="Ouvrir dans Google Agenda">${OPEN}</a>`:''}${e.canEdit?`<button class="icon" data-i="${i}" title="Supprimer">${X}</button>`:''}</li>`).join(''):'<li class="empty">Aucun événement</li>';
+ // choix de l'agenda pour les nouveaux événements
+ const w=gOn()?G.cals.filter(canWrite):[],s=$('#ev-cal');
+ s.innerHTML='<option value="local">Cet appareil uniquement</option>'+w.map(c=>`<option value="${esc(c.id)}">${esc(calName(c))}</option>`).join('');
+ s.value=w.some(c=>c.id===gcfg.target)?gcfg.target:'local';s.hidden=!w.length;
+ renderGPanel();
+}
+function renderGPanel(){
+ const p=$('#gpanel');let h='<h3>Google Agenda</h3>';
+ if(location.protocol==='file:'){h+='<p class="warn" style="margin:0">La synchro Google fonctionne quand l’app est ouverte depuis son adresse web (pas en double-cliquant sur le fichier).</p>';p.innerHTML=h;return}
+ if(!gcfg.clientId){
+  h+=`<p class="warn" style="margin:0 0 10px">Synchronise ton agenda Google : il apparaît aussi dans Calendrier sur Mac, dans Outlook sur Windows, et chez ton associé. Colle l’ID client Google (voir GUIDE-GOOGLE).</p><form id="g-cid" class="row"><input type="text" id="g-cid-in" placeholder="…apps.googleusercontent.com" required><button class="btn">OK</button></form>`;
+ }else if(!gOn()){
+  h+=`<p class="warn" style="margin:0 0 10px">${gcfg.connected?'Google demande de te reconnecter (session d’une heure).':'Connecte ton compte Google pour voir et modifier tes agendas ici.'}</p><button class="btn" id="g-connect" style="width:100%">${gcfg.connected?'Reconnecter':'Connecter Google Agenda'}</button><button class="link" id="g-reset" style="margin-top:12px">Changer l’ID client</button>`;
+ }else{
+  const own=G.cals.filter(c=>c.accessRole==='owner');
+  h+=`<div>${G.cals.map(c=>`<label class="calrow"><input type="checkbox" data-gshow="${esc(c.id)}" ${gcfg.shown.includes(c.id)?'checked':''}><span class="dot" style="--c:${safeColor(c.backgroundColor)}"></span><span class="grow trunc">${esc(calName(c))}</span>${canWrite(c)?'':'<small class="due">lecture</small>'}</label>`).join('')}</div>
+  <form id="g-share" class="addform"><strong style="font-size:14px">Partager avec mon associé</strong>
+   <select id="g-share-cal"><option value="__new">＋ Nouvel agenda « Commun »</option>${own.map(c=>`<option value="${esc(c.id)}">${esc(calName(c))}</option>`).join('')}</select>
+   <input type="email" id="g-share-mail" placeholder="Adresse Gmail de ton associé" required>
+   <button class="btn" id="g-share-btn">Partager</button>
+   <span class="warn">Il reçoit une invitation et peut ajouter, modifier et supprimer des événements.</span></form>
+  <button class="link" id="g-disc" style="margin-top:12px">Déconnecter Google</button>`;
+ }
+ if(G.err)h+=`<p class="err" style="margin:10px 0 0">${esc(G.err)}</p>`;
+ p.innerHTML=h;
+}
+$('#gpanel').addEventListener('click',e=>{
+ if(e.target.id==='g-connect')gConnect();
+ else if(e.target.id==='g-disc'){if(confirm('Déconnecter Google Agenda sur cet appareil ?'))gDisconnect()}
+ else if(e.target.id==='g-reset'){gcfg.clientId='';gcfg.connected=false;save('hub.gcal',gcfg);G.client=null;renderGPanel()}
+});
+$('#gpanel').addEventListener('change',e=>{const id=e.target.dataset.gshow;if(!id)return;
+ gcfg.shown=e.target.checked?[...new Set([...gcfg.shown,id])]:gcfg.shown.filter(x=>x!==id);save('hub.gcal',gcfg);
+ G.cache={};renderAgenda()});
+$('#gpanel').addEventListener('submit',async e=>{e.preventDefault();
+ if(e.target.id==='g-cid'){const v=$('#g-cid-in').value.trim();if(!/\.apps\.googleusercontent\.com$/.test(v)){G.err='Cet ID ne ressemble pas à un ID client Google.';renderGPanel();return}
+  gcfg.clientId=v;G.err='';save('hub.gcal',gcfg);G.client=null;initGClient();renderGPanel();return}
+ if(e.target.id==='g-share'){
+  const mail=$('#g-share-mail').value.trim();let calId=$('#g-share-cal').value;const btn=$('#g-share-btn');btn.disabled=true;btn.textContent='Partage…';
+  try{
+   if(calId==='__new'){const c=await gapi('/calendars',{method:'POST',body:JSON.stringify({summary:'Commun',timeZone:TZ})});calId=c.id;gcfg.shown.push(calId);save('hub.gcal',gcfg)}
+   await gapi(`/calendars/${encodeURIComponent(calId)}/acl?sendNotifications=true`,{method:'POST',body:JSON.stringify({role:'writer',scope:{type:'user',value:mail}})});
+   toast('Partagé — ton associé reçoit une invitation par email');await gStart()}
+  catch(err){G.err=err.message;renderGPanel()}
+ }
+});
+$('#ev-cal').onchange=e=>{gcfg.target=e.target.value;save('hub.gcal',gcfg)};
+$('#cal-grid').onclick=e=>{const b=e.target.closest('[data-day]');if(!b)return;sel=b.dataset.day;const d=new Date(sel+'T00:00');if(d.getMonth()!==cal.getMonth()){cal=new Date(d.getFullYear(),d.getMonth(),1)}renderAgenda();$('#ev-title').focus()};
+$('#cal-prev').onclick=()=>{cal.setMonth(cal.getMonth()-1);renderAgenda()};
+$('#cal-next').onclick=()=>{cal.setMonth(cal.getMonth()+1);renderAgenda()};
+$('#cal-today').onclick=()=>{cal=new Date();cal.setDate(1);sel=today();renderAgenda()};
+$('#cal-refresh').onclick=()=>{G.cache={};renderAgenda()};
+$('#ev-form').onsubmit=async e=>{e.preventDefault();
+ const title=$('#ev-title').value.trim(),time=$('#ev-time').value,target=$('#ev-cal').value;if(!title)return;
+ if(target==='local'||!gOn()){events.push({id:uid(),date:sel,time,title});save('hub.events',events)}
+ else{
+  let body;
+  if(time){const d=new Date(`${sel}T${time}`);d.setHours(d.getHours()+1);body={summary:title,start:{dateTime:`${sel}T${time}:00`,timeZone:TZ},end:{dateTime:`${ymd(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`,timeZone:TZ}}}
+  else{const d=new Date(sel+'T00:00');d.setDate(d.getDate()+1);body={summary:title,start:{date:sel},end:{date:ymd(d)}}}
+  const btn=$('#ev-btn');btn.disabled=true;btn.textContent='Envoi…';
+  try{await gapi(`/calendars/${encodeURIComponent(target)}/events`,{method:'POST',body:JSON.stringify(body)});toast('Ajouté à Google Agenda');G.cache={}}
+  catch(err){toast(err.message);btn.disabled=false;btn.textContent='Ajouter';renderAgenda();return}
+  btn.disabled=false;btn.textContent='Ajouter';
+ }
+ $('#ev-title').value='';$('#ev-time').value='';renderAgenda()};
+$('#day-events').onclick=async e=>{const b=e.target.closest('button[data-i]');if(!b)return;const ev=dayList[+b.dataset.i];if(!ev)return;
+ if(ev.src==='l'){events=events.filter(x=>x.id!==ev.id);save('hub.events',events);renderAgenda();return}
+ if(!confirm(`Supprimer « ${ev.title} » de l’agenda « ${ev.cal} » ? (supprimé aussi pour les personnes qui le partagent)`))return;
+ try{await gapi(`/calendars/${encodeURIComponent(ev.calId)}/events/${encodeURIComponent(ev.id)}`,{method:'DELETE'});toast('Supprimé');G.cache={};renderAgenda()}
+ catch(err){toast(err.message)}};
+
+// ---------- tâches
+let filter='active';
+function dueBadge(x){if(!x.due)return'';const t=today();const cls=!x.done&&x.due<t?'late':x.due===t?'now':'';const lbl=x.due===t?'Aujourd’hui':fmtShort(x.due);return`<span class="due ${cls}">${lbl}</span>`}
+function renderTodos(){
+ const left=todos.filter(x=>!x.done).length;
+ $('#todo-sub').textContent=left?`${left} tâche${left>1?'s':''} en cours`:'Rien en attente.';
+ const list=todos.filter(x=>filter==='all'||(filter==='done'?x.done:!x.done)).sort((a,b)=>(a.done-b.done)||byDue(a,b));
+ $('#todo-list').innerHTML=list.length?list.map(x=>`<li class="${x.done?'done':''}"><input type="checkbox" class="check" data-tg="${x.id}" ${x.done?'checked':''}><span class="txt grow">${esc(x.text)}</span>${dueBadge(x)}<button class="icon" data-deltd="${x.id}" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></li>`).join(''):`<li class="empty">${filter==='done'?'Aucune tâche terminée':'Aucune tâche'}</li>`;
+ document.querySelectorAll('#todo-filters [data-f]').forEach(b=>b.classList.toggle('on',b.dataset.f===filter));
+}
+$('#todo-form').onsubmit=e=>{e.preventDefault();const text=$('#todo-text').value.trim();if(!text)return;todos.push({id:uid(),text,due:$('#todo-due').value,done:false,created:Date.now()});save('hub.todos',todos);$('#todo-text').value='';$('#todo-due').value='';if(filter==='done')filter='active';renderTodos()};
+$('#todo-list').onclick=e=>{const d=e.target.closest('[data-deltd]');if(d){todos=todos.filter(x=>x.id!==d.dataset.deltd);save('hub.todos',todos);renderTodos()}};
+$('#todo-list').onchange=e=>{const id=e.target.dataset.tg;const x=todos.find(t=>t.id===id);if(x){x.done=e.target.checked;save('hub.todos',todos);setTimeout(renderTodos,200)}};
+$('#todo-filters').onclick=e=>{const f=e.target.dataset.f;if(f){filter=f;renderTodos()}};
+$('#todo-clear').onclick=()=>{const n=todos.filter(x=>x.done).length;if(!n)return;if(confirm(`Supprimer ${n} tâche${n>1?'s':''} terminée${n>1?'s':''} ?`)){todos=todos.filter(x=>!x.done);save('hub.todos',todos);renderTodos()}};
+
+// ---------- notes
+let curNote=null,noteT;
+function renderNotes(){
+ const q=$('#note-search').value.toLowerCase();
+ const list=[...notes].sort((a,b)=>b.updated-a.updated).filter(n=>!q||(n.title+' '+n.body).toLowerCase().includes(q));
+ if(curNote&&!notes.find(n=>n.id===curNote))curNote=null;
+ if(!curNote&&list.length&&!q)curNote=list[0].id;
+ $('#note-list').innerHTML=list.length?list.map(n=>`<li data-id="${n.id}" class="${n.id===curNote?'on':''}"><b class="trunc">${esc(n.title||'Sans titre')}</b><small class="trunc">${esc((n.body||'').split('\n')[0].slice(0,60))||'—'}</small></li>`).join(''):`<li class="empty" style="cursor:default">${q?'Aucun résultat':'Aucune note'}</li>`;
+ const n=notes.find(x=>x.id===curNote);
+ $('#note-editor').hidden=!n;$('#note-none').hidden=!!n;
+ if(n){if(document.activeElement!==$('#note-title'))$('#note-title').value=n.title;if(document.activeElement!==$('#note-body'))$('#note-body').value=n.body;$('#note-meta').textContent='Modifiée '+ago(n.updated)}
+}
+$('#note-list').onclick=e=>{const li=e.target.closest('[data-id]');if(li){curNote=li.dataset.id;renderNotes()}};
+$('#note-new').onclick=()=>{const n={id:uid(),title:'',body:'',updated:Date.now()};notes.push(n);curNote=n.id;save('hub.notes',notes);$('#note-search').value='';renderNotes();$('#note-title').focus()};
+$('#note-search').oninput=renderNotes;
+function editNote(){const n=notes.find(x=>x.id===curNote);if(!n)return;n.title=$('#note-title').value;n.body=$('#note-body').value;n.updated=Date.now();clearTimeout(noteT);noteT=setTimeout(()=>{save('hub.notes',notes);renderNotes()},300)}
+$('#note-title').oninput=editNote;$('#note-body').oninput=editNote;
+$('#note-del').onclick=()=>{const n=notes.find(x=>x.id===curNote);if(!n)return;if(confirm(`Supprimer « ${n.title||'Sans titre'} » ?`)){notes=notes.filter(x=>x.id!==curNote);curNote=null;save('hub.notes',notes);renderNotes()}};
+
+// ---------- coffre-fort (PBKDF2 600k + AES-GCM 256)
+const ITER=600000,te=new TextEncoder(),td=new TextDecoder();
+const b64=buf=>{const a=new Uint8Array(buf);let s='';for(let i=0;i<a.length;i++)s+=String.fromCharCode(a[i]);return btoa(s)};
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const V={key:null,salt:null,items:[],shown:new Set(),timer:null,edit:null};
+async function deriveKey(pw,salt,iter){const base=await crypto.subtle.importKey('raw',te.encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function vaultSave(){const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},V.key,te.encode(JSON.stringify(V.items)));save('hub.vault',{v:1,iter:ITER,salt:b64(V.salt),iv:b64(iv),data:b64(ct)})}
+function strength(pw){let s=0;if(pw.length>=12)s++;if(pw.length>=16)s++;if(/[a-z]/.test(pw)&&/[A-Z]/.test(pw))s++;if(/\d/.test(pw))s++;if(/[^A-Za-z0-9]/.test(pw))s++;return s}
+function meter(el,pw){const s=strength(pw);el.style.width=(pw?Math.max(10,s*20):0)+'%';el.style.background=s<=2?'var(--danger)':s<=3?'#f59f00':'var(--ok)'}
+function genPw(len=20){const cs='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*?-_+=';let out='';const lim=256-(256%cs.length);while(out.length<len){const b=crypto.getRandomValues(new Uint8Array(len*2));for(const x of b){if(x<lim&&out.length<len)out+=cs[x%cs.length]}}return out}
+
+function renderVault(){
+ if(!window.crypto?.subtle){$('#vault-lock').hidden=$('#vault-setup').hidden=$('#vault-open').hidden=true;toast('Chiffrement indisponible dans ce navigateur');return}
+ const st=load('hub.vault',null);
+ $('#vault-setup').hidden=!!st;$('#vault-lock').hidden=!st||!!V.key;$('#vault-open').hidden=!V.key;
+ if(!st)setTimeout(()=>$('#setup-pw').focus(),50);
+ else if(!V.key)setTimeout(()=>$('#unlock-pw').focus(),50);
+ else renderVaultList();
+}
+function renderVaultList(){
+ const q=$('#vault-search').value.toLowerCase();
+ const list=V.items.filter(i=>!q||(i.name+' '+i.user+' '+i.url).toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+ const ic=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p}</svg>`;
+ const I={copy:ic('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),eye:ic('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),user:ic('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),edit:ic('<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),open:ic('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>')};
+ $('#vault-list').innerHTML=list.length?list.map(i=>`<div class="vrow"><div class="avatar">${esc((i.name||'?').trim().charAt(0))}</div>
+  <div style="min-width:0"><div class="trunc" style="font-weight:600">${esc(i.name)}</div><div class="trunc due">${esc(i.user||'—')}</div></div>
+  <div class="pwcol pw trunc">${V.shown.has(i.id)?esc(i.pass):'••••••••••'}</div>
+  <div class="row" style="gap:0">${i.url&&/^https?:\/\//i.test(i.url)?`<a class="icon" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer" title="Ouvrir le site">${I.open}</a>`:''}<button class="icon" data-cu="${i.id}" title="Copier l’identifiant">${I.user}</button><button class="icon" data-cp="${i.id}" title="Copier le mot de passe">${I.copy}</button><button class="icon" data-sh="${i.id}" title="Afficher">${I.eye}</button><button class="icon" data-ed="${i.id}" title="Modifier">${I.edit}</button></div></div>`).join(''):`<p class="empty" style="padding:14px 0;margin:0">${q?'Aucun résultat':'Coffre vide — ajoute ton premier compte.'}</p>`;
+}
+function lockVault(msg){V.key=null;V.items=[];V.shown.clear();clearTimeout(V.timer);if($('#entry-dlg').open)$('#entry-dlg').close();$('#vault-search').value='';if(!$('#v-vault').hidden)renderVault();if(msg)toast(msg)}
+function touch(){if(!V.key)return;clearTimeout(V.timer);V.timer=setTimeout(()=>lockVault('Coffre verrouillé (inactivité)'),5*60*1000)}
+['click','keydown','mousemove','touchstart'].forEach(ev=>document.addEventListener(ev,touch,{passive:true}));
+
+$('#setup-pw').oninput=e=>meter($('#setup-meter'),e.target.value);
+$('#vault-setup').onsubmit=async e=>{e.preventDefault();const p=$('#setup-pw').value,p2=$('#setup-pw2').value,err=$('#setup-err');
+ if(p.length<12){err.textContent='12 caractères minimum.';return}if(p!==p2){err.textContent='Les deux mots de passe ne correspondent pas.';return}
+ err.textContent='Création…';V.salt=crypto.getRandomValues(new Uint8Array(16));V.key=await deriveKey(p,V.salt,ITER);V.items=[];await vaultSave();
+ $('#setup-pw').value=$('#setup-pw2').value='';err.textContent='';meter($('#setup-meter'),'');touch();renderVault();toast('Coffre créé')};
+$('#vault-lock').onsubmit=async e=>{e.preventDefault();const st=load('hub.vault',null),err=$('#unlock-err'),btn=$('#unlock-btn');if(!st)return;
+ err.textContent='';btn.disabled=true;btn.textContent='Vérification…';
+ try{const salt=unb64(st.salt),key=await deriveKey($('#unlock-pw').value,salt,st.iter||ITER);const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(st.iv)},key,unb64(st.data));V.items=JSON.parse(td.decode(pt));V.key=key;V.salt=salt;$('#unlock-pw').value='';touch();renderVault()}
+ catch{err.textContent='Mot de passe incorrect.';$('#unlock-pw').select()}
+ finally{btn.disabled=false;btn.textContent='Déverrouiller'}};
+$('#vault-lockbtn').onclick=()=>lockVault('Coffre verrouillé');
+$('#vault-search').oninput=renderVaultList;
+
+let clipT;async function copy(txt,what){try{await navigator.clipboard.writeText(txt);toast(`${what} copié — effacé dans 30 s`);clearTimeout(clipT);clipT=setTimeout(()=>navigator.clipboard.writeText('').catch(()=>{}),30000)}catch{toast('Copie impossible')}}
+$('#vault-list').onclick=e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset,find=id=>V.items.find(i=>i.id===id);
+ if(d.cu)copy(find(d.cu).user||'','Identifiant');
+ else if(d.cp)copy(find(d.cp).pass||'','Mot de passe');
+ else if(d.sh){V.shown.has(d.sh)?V.shown.delete(d.sh):V.shown.add(d.sh);renderVaultList()}
+ else if(d.ed)openEntry(find(d.ed))};
+
+// formulaire d'entrée
+const dlg=$('#entry-dlg');
+function openEntry(it){V.edit=it||null;$('#entry-head').textContent=it?'Modifier':'Nouveau compte';
+ $('#e-name').value=it?.name||'';$('#e-user').value=it?.user||'';$('#e-pass').value=it?.pass||(it?'':genPw());$('#e-url').value=it?.url||'';$('#e-note').value=it?.note||'';$('#e-pass').type='password';meter($('#e-meter'),$('#e-pass').value);
+ const f=$('#entry-form');let del=$('#e-del');if(del)del.remove();
+ if(it){del=document.createElement('button');del.type='button';del.className='btn danger';del.id='e-del';del.textContent='Supprimer';del.onclick=async()=>{if(!confirm(`Supprimer « ${it.name} » du coffre ?`))return;V.items=V.items.filter(x=>x.id!==it.id);await vaultSave();dlg.close();renderVaultList();toast('Supprimé')};$('#e-cancel').after(del)}
+ dlg.showModal();$('#e-name').focus()}
+$('#vault-add').onclick=()=>openEntry(null);
+$('#e-cancel').onclick=()=>dlg.close();
+$('#e-show').onclick=()=>{const p=$('#e-pass');p.type=p.type==='password'?'text':'password'};
+$('#e-gen').onclick=()=>{$('#e-pass').value=genPw();$('#e-pass').type='text';meter($('#e-meter'),$('#e-pass').value)};
+$('#e-pass').oninput=e=>meter($('#e-meter'),e.target.value);
+$('#entry-form').onsubmit=async e=>{e.preventDefault();if(!V.key)return dlg.close();
+ const data={name:$('#e-name').value.trim(),user:$('#e-user').value.trim(),pass:$('#e-pass').value,url:$('#e-url').value.trim(),note:$('#e-note').value};
+ if(V.edit)Object.assign(V.edit,data);else V.items.push({id:uid(),...data});
+ await vaultSave();dlg.close();renderVaultList();toast('Enregistré')};
+
+// ---------- sauvegarde
+$('#export').onclick=()=>{const data={app:'mon-espace',version:1,date:new Date().toISOString(),events,todos,notes,vault:load('hub.vault',null)};
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,1)],{type:'application/json'}));a.download=`mon-espace-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Sauvegarde exportée')};
+$('#import').onclick=()=>$('#importfile').click();
+$('#importfile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+ try{const d=JSON.parse(await f.text());if(d.app!=='mon-espace')throw 0;
+  if(!confirm('Remplacer toutes les données actuelles par cette sauvegarde ?'))return;
+  save('hub.events',d.events||[]);save('hub.todos',d.todos||[]);save('hub.notes',d.notes||[]);if(d.vault)save('hub.vault',d.vault);else localStorage.removeItem('hub.vault');
+  events=d.events||[];todos=d.todos||[];notes=d.notes||[];lockVault();renderHome();toast('Sauvegarde importée')}
+ catch{toast('Fichier de sauvegarde invalide')}};
+
+// ---------- démarrage
+let startView='home';try{startView=localStorage.getItem('hub.view')||'home'}catch{}
+show(startView);
+setInterval(()=>{if(!$('#v-home').hidden)renderHome()},60000);
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
+</body>
+</html>
