@@ -518,6 +518,11 @@ async function syncNow(){
  finally{SY.busy=false;if(SY.again){SY.again=false;scheduleSync()}}
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-SY.last>20000)syncNow()});
+// agenda en direct : on recharge les mois affichés toutes les 30 s (événements ajoutés par l'associé, etc.)
+function calLive(){if(!gOn()||!G.cals.length||document.visibilityState!=='visible')return;
+ for(const k of Object.keys(G.cache)){const[y,m]=k.split('-').map(Number);loadMonth(y,m,true)}}
+setInterval(calLive,30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')calLive()});
 setInterval(()=>{if(document.visibilityState==='visible')syncNow()},60000);
 
 function normG(ev,c){
