@@ -65,7 +65,10 @@ input:focus,textarea:focus{border-color:var(--accent)}
 .tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;padding:0 5px;border-radius:4px;margin-right:6px;line-height:16px;vertical-align:1px}
 .tag.cm{background:rgba(245,159,0,.2);color:#ffc04d}
 .tag.prs{background:rgba(123,147,252,.2);color:#aab8ff}
-.tag.md{background:rgba(81,207,102,.18);color:#8ce99a;font-size:11px;text-transform:none;letter-spacing:0}
+.tag.md{--mc:#51cf66;background:color-mix(in srgb,var(--mc) 22%,transparent);color:color-mix(in srgb,var(--mc) 75%,#fff);font-size:11px;text-transform:none;letter-spacing:0}
+#todo-list li.hasm{border-left:4px solid var(--mc);padding-left:10px;background:color-mix(in srgb,var(--mc) 7%,transparent);border-radius:6px;margin-bottom:4px;border-top:0}
+select.mini.hasm{color:var(--mc);border-color:color-mix(in srgb,var(--mc) 50%,transparent);font-weight:600}
+.mdot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--mc);margin-right:6px;vertical-align:0}
 select.mini{width:auto;max-width:140px;padding:3px 8px;font-size:12.5px;border-radius:7px;color:var(--muted);background:transparent}
 .chip .tag{font-size:9px;padding:0 3px;margin-right:4px;line-height:13px}
 .agenda.wide{grid-template-columns:1fr}
@@ -368,7 +371,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 // ---------- outils
 const $=s=>document.querySelector(s);
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch{return d}};
-const SYNCED=['hub.events','hub.todos','hub.notes','hub.vault','hub.models','hub.myfeed'];
+const SYNCED=['hub.events','hub.todos','hub.notes','hub.vault','hub.models','hub.myfeed','hub.mcolors'];
 let syncApplying=false,syncTimer=null;
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{toast('Impossible d’enregistrer (stockage bloqué)')}if(SYNCED.includes(k)&&!syncApplying)scheduleSync()};
 function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(),1500)}
@@ -388,7 +391,7 @@ try{navigator.storage?.persist?.()}catch{}
 
 let events=load('hub.events',[]),todos=load('hub.todos',[]),notes=load('hub.notes',[]);
 let mfcfg=load('hub.myfeed',{key:'',goal:0,model:'',u:0}); // MyFeed : propre à chaque compte
-let models=load('hub.models',[]); // modèles auxquels on assigne des tâches
+let models=load('hub.models',[]),mcolors=load('hub.mcolors',{}); // couleur de chaque modèle // modèles auxquels on assigne des tâches
 let tomb=load('hub.tomb',{}); // éléments supprimés (pour que la suppression se propage aux autres appareils)
 function markDeleted(id){tomb[id]=Date.now();try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}}
 
@@ -486,7 +489,8 @@ function mergeAll(l,r){
  const va=l.vault,vb=r.vault,vault=!va?vb:!vb?va:((vb.ts||0)>(va.ts||0)?vb:va);
  const models=[...new Set([...(l.models||[]),...(r.models||[])])].filter(m=>!t['model:'+m]);
  const myfeed=((r.myfeed?.u||0)>(l.myfeed?.u||0)?r.myfeed:l.myfeed)||null;
- return{events:ml(l.events,r.events),todos:ml(l.todos,r.todos),notes:ml(l.notes,r.notes),models,myfeed,vault:vault||null,tomb:t}}
+ const mc={...(l.mcolors||{}),...(r.mcolors||{})};
+ return{events:ml(l.events,r.events),todos:ml(l.todos,r.todos),notes:ml(l.notes,r.notes),models,mcolors:mc,myfeed,vault:vault||null,tomb:t}}
 async function syncNow(){
  if(!gOn()||!gcfg.connected)return;
  if(SY.busy){SY.again=true;return}
@@ -494,14 +498,14 @@ async function syncNow(){
  try{
   if(!SY.file){const q=encodeURIComponent("name='mon-espace.json'");const r=await gapi(`${DRIVE}?spaces=appDataFolder&q=${q}&fields=files(id)`);SY.file=r.files?.[0]?.id||null}
   const remote=SY.file?await gapi(`${DRIVE}/${SY.file}?alt=media`):null;
-  const local={events,todos,notes,models,myfeed:mfcfg.u?mfcfg:null,vault:load('hub.vault',null),tomb};
+  const local={events,todos,notes,models,mcolors,myfeed:mfcfg.u?mfcfg:null,vault:load('hub.vault',null),tomb};
   const m=remote?mergeAll(local,remote):local;
   const oldVault=JSON.stringify(local.vault),changed=JSON.stringify(m)!==JSON.stringify(local);
   if(changed){
    syncApplying=true;
    events=m.events;todos=m.todos;notes=m.notes;models=m.models||[];tomb=m.tomb;
    if(m.myfeed&&m.myfeed.u!==mfcfg.u){const kc=m.myfeed.key!==mfcfg.key;mfcfg=m.myfeed;save('hub.myfeed',mfcfg);MF.stats=null;if(kc)MF.models=null}
-   save('hub.models',models);save('hub.events',events);save('hub.todos',todos);save('hub.notes',notes);try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}
+   mcolors=m.mcolors||{};save('hub.mcolors',mcolors);save('hub.models',models);save('hub.events',events);save('hub.todos',todos);save('hub.notes',notes);try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}
    if(m.vault)save('hub.vault',m.vault);
    syncApplying=false;
    if(JSON.stringify(m.vault)!==oldVault&&V.key)lockVault('Coffre mis à jour depuis un autre appareil');
@@ -718,7 +722,9 @@ let filter='active',mfilter='';
 const NEWM='__new';
 function modelOptions(cur,emptyLbl){return`<option value="">${emptyLbl}</option>`+models.map(m=>`<option value="${esc(m)}"${m===cur?' selected':''}>${esc(m)}</option>`).join('')+`<option value="${NEWM}">＋ Nouveau modèle…</option>`}
 function askNewModel(){const n=(prompt('Nom du modèle :')||'').trim();if(!n)return'';if(!models.includes(n)){models.push(n);delete tomb['model:'+n];save('hub.models',models)}return n}
-const mtag=x=>x.model?`<span class="tag md">${esc(x.model)}</span>`:'';
+const MPAL=['#4dabf7','#f783ac','#ffa94d','#69db7c','#b197fc','#ffd43b','#3bc9db','#ff8787','#a9e34b','#e599f7'];
+function mcolor(n){if(!mcolors[n]){const used=new Set(Object.values(mcolors));let h=0;for(const c of String(n))h=(h*31+c.charCodeAt(0))>>>0;mcolors[n]=MPAL.find(c=>!used.has(c))||MPAL[h%MPAL.length];save('hub.mcolors',mcolors)}return mcolors[n]}
+const mtag=x=>x.model?`<span class="tag md" style="--mc:${mcolor(x.model)}">${esc(x.model)}</span>`:'';
 function dueBadge(x){if(!x.due)return'';const t=today();const cls=!x.done&&x.due<t?'late':x.due===t?'now':'';const lbl=x.due===t?'Aujourd’hui':fmtShort(x.due);return`<span class="due ${cls}">${lbl}</span>`}
 function renderTodos(){
  const left=todos.filter(x=>!x.done).length;
@@ -726,9 +732,9 @@ function renderTodos(){
  if(mfilter&&!models.includes(mfilter))mfilter='';
  const ms=$('#todo-model'),keep=ms.value;ms.innerHTML=modelOptions(keep,'Sans modèle');if(keep&&keep!==NEWM)ms.value=keep;
  const cnt=m=>todos.filter(x=>!x.done&&x.model===m).length;
- $('#model-filters').innerHTML=models.length?`<button data-m="" class="${mfilter?'':'on'}">Tous les modèles</button>`+models.map(m=>`<button data-m="${esc(m)}" class="${m===mfilter?'on':''}">${esc(m)} <span class="cnt">${cnt(m)}</span></button>`).join('')+(mfilter?`<span class="grow"></span><button data-rm="${esc(mfilter)}" style="color:var(--danger)">Retirer « ${esc(mfilter)} »</button>`:''):'';
+ $('#model-filters').innerHTML=models.length?`<button data-m="" class="${mfilter?'':'on'}">Tous les modèles</button>`+models.map(m=>`<button data-m="${esc(m)}" class="${m===mfilter?'on':''}" style="--mc:${mcolor(m)}"><span class="mdot"></span>${esc(m)} <span class="cnt">${cnt(m)}</span></button>`).join('')+(mfilter?`<span class="grow"></span><button data-rm="${esc(mfilter)}" style="color:var(--danger)">Retirer « ${esc(mfilter)} »</button>`:''):'';
  const list=todos.filter(x=>(filter==='all'||(filter==='done'?x.done:!x.done))&&(!mfilter||x.model===mfilter)).sort((a,b)=>(a.done-b.done)||byDue(a,b));
- $('#todo-list').innerHTML=list.length?list.map(x=>`<li class="${x.done?'done':''}"><input type="checkbox" class="check" data-tg="${x.id}" ${x.done?'checked':''}><span class="txt grow">${esc(x.text)}</span>${dueBadge(x)}<select class="mini" data-asg="${x.id}" title="Assigner à un modèle">${modelOptions(x.model||'','— modèle')}</select><button class="icon" data-deltd="${x.id}" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></li>`).join(''):`<li class="empty">${filter==='done'?'Aucune tâche terminée':'Aucune tâche'}</li>`;
+ $('#todo-list').innerHTML=list.length?list.map(x=>`<li class="${x.done?'done':''}${x.model?' hasm':''}"${x.model?` style="--mc:${mcolor(x.model)}"`:''}><input type="checkbox" class="check" data-tg="${x.id}" ${x.done?'checked':''}><span class="txt grow">${esc(x.text)}</span>${dueBadge(x)}<select class="mini${x.model?' hasm':''}"${x.model?` style="--mc:${mcolor(x.model)}"`:''} data-asg="${x.id}" title="Assigner à un modèle">${modelOptions(x.model||'','— modèle')}</select><button class="icon" data-deltd="${x.id}" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></li>`).join(''):`<li class="empty">${filter==='done'?'Aucune tâche terminée':'Aucune tâche'}</li>`;
  document.querySelectorAll('#todo-filters [data-f]').forEach(b=>b.classList.toggle('on',b.dataset.f===filter));
 }
 $('#todo-model').onchange=e=>{if(e.target.value===NEWM){const n=askNewModel();renderTodos();$('#todo-model').value=n}};
