@@ -332,19 +332,28 @@ const safeColor=c=>/^#[0-9a-f]{3,8}$/i.test(c||'')?c:'var(--accent)';
 const calName=c=>c.summaryOverride||c.summary||c.id;
 const canWrite=c=>c.accessRole==='owner'||c.accessRole==='writer';
 function rerenderCal(){if(!$('#v-agenda').hidden)renderAgenda();else if(!$('#v-home').hidden)renderHome()}
-window.gisLoaded=()=>{initGClient();if(gOn())gStart()};
-function initGClient(){
- if(G.client||!gcfg.clientId||!window.google?.accounts?.oauth2)return;
- G.client=google.accounts.oauth2.initTokenClient({client_id:gcfg.clientId,scope:SCOPE,
-  callback:r=>{if(r.error){G.err='Connexion refusée ('+r.error+')';rerenderCal();return}
-   G.token=r.access_token;G.exp=Date.now()+(r.expires_in||3600)*1000;G.err='';
-   try{sessionStorage.setItem('hub.gtok',JSON.stringify({t:G.token,e:G.exp}))}catch{}
-   gcfg.connected=true;save('hub.gcal',gcfg);gStart()},
-  error_callback:e=>{G.err=e?.type==='popup_closed'?'Fenêtre Google fermée.':'Fenêtre Google bloquée : autorise les popups pour ce site.';rerenderCal()}});
+// Connexion par redirection (pas de popup) : Google renvoie le jeton dans l'adresse (#access_token=…)
+const REDIRECT=location.origin+location.pathname.replace(/index\.html$/,'');
+let gReturned=false;
+(function readGoogleReturn(){
+ if(!location.hash.includes('access_token')&&!location.hash.includes('error='))return;
+ const h=new URLSearchParams(location.hash.slice(1));let st=null;try{st=sessionStorage.getItem('hub.gstate')}catch{}
+ history.replaceState(null,'',location.pathname+location.search);
+ if(h.get('error')){G.err='Connexion Google annulée ('+h.get('error')+')';gReturned=true;return}
+ if(!st||h.get('state')!==st){G.err='Réponse Google invalide, réessaie.';gReturned=true;return}
+ G.token=h.get('access_token');G.exp=Date.now()+(+h.get('expires_in')||3600)*1000;G.err='';
+ try{sessionStorage.setItem('hub.gtok',JSON.stringify({t:G.token,e:G.exp}));sessionStorage.removeItem('hub.gstate')}catch{}
+ gcfg.connected=true;save('hub.gcal',gcfg);gReturned=true;
+})();
+function gConnect(){
+ if(!gcfg.clientId)return;
+ const st=Math.random().toString(36).slice(2)+Date.now().toString(36);
+ try{sessionStorage.setItem('hub.gstate',st)}catch{}
+ const p=new URLSearchParams({client_id:gcfg.clientId,redirect_uri:REDIRECT,response_type:'token',scope:SCOPE,include_granted_scopes:'true',state:st});
+ location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p;
 }
-function gConnect(){initGClient();if(!G.client){toast('Google se charge encore, réessaie dans 2 s');return}G.client.requestAccessToken({prompt:gcfg.connected?'':'consent'})}
 function gDisconnect(){
- if(G.token&&window.google?.accounts?.oauth2)google.accounts.oauth2.revoke(G.token,()=>{});
+ if(G.token)fetch('https://oauth2.googleapis.com/revoke?token='+encodeURIComponent(G.token),{method:'POST',mode:'no-cors'}).catch(()=>{});
  G.token=null;G.exp=0;G.cals=[];G.cache={};gcfg.connected=false;gcfg.target='local';save('hub.gcal',gcfg);
  try{sessionStorage.removeItem('hub.gtok')}catch{}rerenderCal()}
 async function gapi(path,opt={}){
@@ -439,14 +448,14 @@ function renderGPanel(){
 $('#gpanel').addEventListener('click',e=>{
  if(e.target.id==='g-connect')gConnect();
  else if(e.target.id==='g-disc'){if(confirm('Déconnecter Google Agenda sur cet appareil ?'))gDisconnect()}
- else if(e.target.id==='g-reset'){gcfg.clientId='';gcfg.connected=false;save('hub.gcal',gcfg);G.client=null;renderGPanel()}
+ else if(e.target.id==='g-reset'){gcfg.clientId='';gcfg.connected=false;save('hub.gcal',gcfg);renderGPanel()}
 });
 $('#gpanel').addEventListener('change',e=>{const id=e.target.dataset.gshow;if(!id)return;
  gcfg.shown=e.target.checked?[...new Set([...gcfg.shown,id])]:gcfg.shown.filter(x=>x!==id);save('hub.gcal',gcfg);
  G.cache={};renderAgenda()});
 $('#gpanel').addEventListener('submit',async e=>{e.preventDefault();
  if(e.target.id==='g-cid'){const v=$('#g-cid-in').value.trim();if(!/\.apps\.googleusercontent\.com$/.test(v)){G.err='Cet ID ne ressemble pas à un ID client Google.';renderGPanel();return}
-  gcfg.clientId=v;G.err='';save('hub.gcal',gcfg);G.client=null;initGClient();renderGPanel();return}
+  gcfg.clientId=v;G.err='';save('hub.gcal',gcfg);renderGPanel();return}
  if(e.target.id==='g-share'){
   const mail=$('#g-share-mail').value.trim();let calId=$('#g-share-cal').value;const btn=$('#g-share-btn');btn.disabled=true;btn.textContent='Partage…';
   try{
@@ -599,9 +608,9 @@ $('#importfile').onchange=async e=>{const f=e.target.files[0];e.target.value='';
 
 // ---------- démarrage
 let startView='home';try{startView=localStorage.getItem('hub.view')||'home'}catch{}
-show(startView);
+show(gReturned?'agenda':startView);
+if(gOn())gStart();
 setInterval(()=>{if(!$('#v-home').hidden)renderHome()},60000);
 </script>
-<script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
 </body>
 </html>
