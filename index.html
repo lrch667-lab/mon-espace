@@ -65,6 +65,8 @@ input:focus,textarea:focus{border-color:var(--accent)}
 .tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;padding:0 5px;border-radius:4px;margin-right:6px;line-height:16px;vertical-align:1px}
 .tag.cm{background:rgba(245,159,0,.2);color:#ffc04d}
 .tag.prs{background:rgba(123,147,252,.2);color:#aab8ff}
+.tag.md{background:rgba(81,207,102,.18);color:#8ce99a;font-size:11px;text-transform:none;letter-spacing:0}
+select.mini{width:auto;max-width:140px;padding:3px 8px;font-size:12.5px;border-radius:7px;color:var(--muted);background:transparent}
 .chip .tag{font-size:9px;padding:0 3px;margin-right:4px;line-height:13px}
 .agenda.wide{grid-template-columns:1fr}
 .calhead{flex-wrap:wrap}
@@ -170,11 +172,6 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
    <div class="card"><h3>À faire <button class="link" data-go="todo">Ouvrir</button></h3><ul class="plain" id="home-todos"></ul></div>
    <div class="card"><h3>Notes récentes <button class="link" data-go="notes">Ouvrir</button></h3><ul class="plain" id="home-notes"></ul></div>
   </div>
-  <div class="card" style="margin-top:16px">
-   <h3>Sauvegarde</h3>
-   <p class="warn" style="margin:0 0 12px">Quand Google est connecté, tâches, notes et coffre se synchronisent tout seuls entre tes appareils (dossier caché de ton Google Drive, le coffre y reste chiffré). Tu peux aussi exporter une copie de secours.</p>
-   <div class="row"><button class="btn ghost" id="export">Exporter</button><button class="btn ghost" id="import">Importer</button><input type="file" id="importfile" accept=".json" hidden></div>
-  </div>
   <div class="card" style="margin-top:16px;min-width:0">
    <div class="calhead">
     <strong id="hw-title"></strong>
@@ -230,6 +227,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
   <div class="card">
    <form class="todo-add" id="todo-form">
     <input type="text" id="todo-text" class="grow" placeholder="Ajouter une tâche…" required style="flex:1;min-width:180px">
+    <select id="todo-model" title="Modèle" style="width:170px"></select>
     <input type="date" id="todo-due" title="Échéance (facultatif)">
     <button class="btn">Ajouter</button>
    </form>
@@ -237,6 +235,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
     <button data-f="active" class="on">À faire</button><button data-f="done">Terminées</button><button data-f="all">Toutes</button>
     <span class="grow"></span><button id="todo-clear" style="color:var(--danger)">Vider les terminées</button>
    </div>
+   <div class="filters" id="model-filters"></div>
    <ul class="plain" id="todo-list"></ul>
   </div>
  </section>
@@ -317,7 +316,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 // ---------- outils
 const $=s=>document.querySelector(s);
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch{return d}};
-const SYNCED=['hub.events','hub.todos','hub.notes','hub.vault'];
+const SYNCED=['hub.events','hub.todos','hub.notes','hub.vault','hub.models'];
 let syncApplying=false,syncTimer=null;
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{toast('Impossible d’enregistrer (stockage bloqué)')}if(SYNCED.includes(k)&&!syncApplying)scheduleSync()};
 function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(),1500)}
@@ -336,6 +335,7 @@ function ago(ts){const s=(Date.now()-ts)/1000;if(s<60)return'à l’instant';if(
 try{navigator.storage?.persist?.()}catch{}
 
 let events=load('hub.events',[]),todos=load('hub.todos',[]),notes=load('hub.notes',[]);
+let models=load('hub.models',[]); // modèles auxquels on assigne des tâches
 let tomb=load('hub.tomb',{}); // éléments supprimés (pour que la suppression se propage aux autres appareils)
 function markDeleted(id){tomb[id]=Date.now();try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}}
 
@@ -356,7 +356,7 @@ function renderHome(){
  const ev=dayEvents(t);
  $('#home-events').innerHTML=ev.length?ev.map(e=>`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="trunc">${tag(e)}${esc(e.title)}</span></li>`).join(''):'<li class="empty">Rien de prévu aujourd’hui</li>';
  const td=todos.filter(x=>!x.done).sort(byDue).slice(0,6);
- $('#home-todos').innerHTML=td.length?td.map(x=>`<li><input type="checkbox" class="check" data-done="${x.id}"><span class="grow trunc">${esc(x.text)}</span>${dueBadge(x)}</li>`).join(''):'<li class="empty">Tout est fait 🎉</li>';
+ $('#home-todos').innerHTML=td.length?td.map(x=>`<li><input type="checkbox" class="check" data-done="${x.id}"><span class="grow trunc">${mtag(x)}${esc(x.text)}</span>${dueBadge(x)}</li>`).join(''):'<li class="empty">Tout est fait 🎉</li>';
  const nt=[...notes].sort((a,b)=>b.updated-a.updated).slice(0,4);
  $('#home-notes').innerHTML=nt.length?nt.map(n=>`<li style="cursor:pointer" data-note="${n.id}"><span class="grow trunc">${esc(n.title||'Sans titre')}</span><span class="due">${ago(n.updated)}</span></li>`).join(''):'<li class="empty">Aucune note</li>';
 }
@@ -430,7 +430,8 @@ function mergeAll(l,r){
  const cut=Date.now()-90*864e5;for(const k in t)if(t[k]<cut)delete t[k];
  const ml=(a,b)=>{const m=new Map();for(const x of[...(a||[]),...(b||[])]){const c=m.get(x.id);if(!c||stamp(x)>stamp(c))m.set(x.id,x)}return[...m.values()].filter(x=>!(t[x.id]&&t[x.id]>=stamp(x)))};
  const va=l.vault,vb=r.vault,vault=!va?vb:!vb?va:((vb.ts||0)>(va.ts||0)?vb:va);
- return{events:ml(l.events,r.events),todos:ml(l.todos,r.todos),notes:ml(l.notes,r.notes),vault:vault||null,tomb:t}}
+ const models=[...new Set([...(l.models||[]),...(r.models||[])])].filter(m=>!t['model:'+m]);
+ return{events:ml(l.events,r.events),todos:ml(l.todos,r.todos),notes:ml(l.notes,r.notes),models,vault:vault||null,tomb:t}}
 async function syncNow(){
  if(!gOn()||!gcfg.connected)return;
  if(SY.busy){SY.again=true;return}
@@ -438,13 +439,13 @@ async function syncNow(){
  try{
   if(!SY.file){const q=encodeURIComponent("name='mon-espace.json'");const r=await gapi(`${DRIVE}?spaces=appDataFolder&q=${q}&fields=files(id)`);SY.file=r.files?.[0]?.id||null}
   const remote=SY.file?await gapi(`${DRIVE}/${SY.file}?alt=media`):null;
-  const local={events,todos,notes,vault:load('hub.vault',null),tomb};
+  const local={events,todos,notes,models,vault:load('hub.vault',null),tomb};
   const m=remote?mergeAll(local,remote):local;
   const oldVault=JSON.stringify(local.vault),changed=JSON.stringify(m)!==JSON.stringify(local);
   if(changed){
    syncApplying=true;
-   events=m.events;todos=m.todos;notes=m.notes;tomb=m.tomb;
-   save('hub.events',events);save('hub.todos',todos);save('hub.notes',notes);try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}
+   events=m.events;todos=m.todos;notes=m.notes;models=m.models||[];tomb=m.tomb;
+   save('hub.models',models);save('hub.events',events);save('hub.todos',todos);save('hub.notes',notes);try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}
    if(m.vault)save('hub.vault',m.vault);
    syncApplying=false;
    if(JSON.stringify(m.vault)!==oldVault&&V.key)lockVault('Coffre mis à jour depuis un autre appareil');
@@ -652,18 +653,33 @@ function renderHomeWeek(){
  const c=$('#hw-cols');c.className='cols'+(n===1?' one':'');c.innerHTML=w.html}
 
 // ---------- tâches
-let filter='active';
+let filter='active',mfilter='';
+const NEWM='__new';
+function modelOptions(cur,emptyLbl){return`<option value="">${emptyLbl}</option>`+models.map(m=>`<option value="${esc(m)}"${m===cur?' selected':''}>${esc(m)}</option>`).join('')+`<option value="${NEWM}">＋ Nouveau modèle…</option>`}
+function askNewModel(){const n=(prompt('Nom du modèle :')||'').trim();if(!n)return'';if(!models.includes(n)){models.push(n);delete tomb['model:'+n];save('hub.models',models)}return n}
+const mtag=x=>x.model?`<span class="tag md">${esc(x.model)}</span>`:'';
 function dueBadge(x){if(!x.due)return'';const t=today();const cls=!x.done&&x.due<t?'late':x.due===t?'now':'';const lbl=x.due===t?'Aujourd’hui':fmtShort(x.due);return`<span class="due ${cls}">${lbl}</span>`}
 function renderTodos(){
  const left=todos.filter(x=>!x.done).length;
  $('#todo-sub').textContent=left?`${left} tâche${left>1?'s':''} en cours`:'Rien en attente.';
- const list=todos.filter(x=>filter==='all'||(filter==='done'?x.done:!x.done)).sort((a,b)=>(a.done-b.done)||byDue(a,b));
- $('#todo-list').innerHTML=list.length?list.map(x=>`<li class="${x.done?'done':''}"><input type="checkbox" class="check" data-tg="${x.id}" ${x.done?'checked':''}><span class="txt grow">${esc(x.text)}</span>${dueBadge(x)}<button class="icon" data-deltd="${x.id}" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></li>`).join(''):`<li class="empty">${filter==='done'?'Aucune tâche terminée':'Aucune tâche'}</li>`;
+ if(mfilter&&!models.includes(mfilter))mfilter='';
+ const ms=$('#todo-model'),keep=ms.value;ms.innerHTML=modelOptions(keep,'Sans modèle');if(keep&&keep!==NEWM)ms.value=keep;
+ const cnt=m=>todos.filter(x=>!x.done&&x.model===m).length;
+ $('#model-filters').innerHTML=models.length?`<button data-m="" class="${mfilter?'':'on'}">Tous les modèles</button>`+models.map(m=>`<button data-m="${esc(m)}" class="${m===mfilter?'on':''}">${esc(m)} <span class="cnt">${cnt(m)}</span></button>`).join('')+(mfilter?`<span class="grow"></span><button data-rm="${esc(mfilter)}" style="color:var(--danger)">Retirer « ${esc(mfilter)} »</button>`:''):'';
+ const list=todos.filter(x=>(filter==='all'||(filter==='done'?x.done:!x.done))&&(!mfilter||x.model===mfilter)).sort((a,b)=>(a.done-b.done)||byDue(a,b));
+ $('#todo-list').innerHTML=list.length?list.map(x=>`<li class="${x.done?'done':''}"><input type="checkbox" class="check" data-tg="${x.id}" ${x.done?'checked':''}><span class="txt grow">${esc(x.text)}</span>${dueBadge(x)}<select class="mini" data-asg="${x.id}" title="Assigner à un modèle">${modelOptions(x.model||'','— modèle')}</select><button class="icon" data-deltd="${x.id}" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></li>`).join(''):`<li class="empty">${filter==='done'?'Aucune tâche terminée':'Aucune tâche'}</li>`;
  document.querySelectorAll('#todo-filters [data-f]').forEach(b=>b.classList.toggle('on',b.dataset.f===filter));
 }
-$('#todo-form').onsubmit=e=>{e.preventDefault();const text=$('#todo-text').value.trim();if(!text)return;todos.push({id:uid(),text,due:$('#todo-due').value,done:false,created:Date.now(),u:Date.now()});save('hub.todos',todos);$('#todo-text').value='';$('#todo-due').value='';if(filter==='done')filter='active';renderTodos()};
+$('#todo-model').onchange=e=>{if(e.target.value===NEWM){const n=askNewModel();renderTodos();$('#todo-model').value=n}};
+$('#model-filters').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.rm!=null){const m=b.dataset.rm;if(!confirm(`Retirer le modèle « ${m} » ? Ses tâches restent, sans modèle.`))return;
+  models=models.filter(x=>x!==m);markDeleted('model:'+m);todos.forEach(x=>{if(x.model===m){x.model='';x.u=Date.now()}});save('hub.models',models);save('hub.todos',todos);mfilter='';renderTodos();return}
+ mfilter=b.dataset.m;$('#todo-model').value=mfilter;renderTodos()};
+$('#todo-form').onsubmit=e=>{e.preventDefault();const text=$('#todo-text').value.trim();if(!text)return;const mv=$('#todo-model').value;todos.push({id:uid(),text,model:mv===NEWM?'':mv,due:$('#todo-due').value,done:false,created:Date.now(),u:Date.now()});save('hub.todos',todos);$('#todo-text').value='';$('#todo-due').value='';if(filter==='done')filter='active';renderTodos()};
 $('#todo-list').onclick=e=>{const d=e.target.closest('[data-deltd]');if(d){markDeleted(d.dataset.deltd);todos=todos.filter(x=>x.id!==d.dataset.deltd);save('hub.todos',todos);renderTodos()}};
-$('#todo-list').onchange=e=>{const id=e.target.dataset.tg;const x=todos.find(t=>t.id===id);if(x){x.done=e.target.checked;x.u=Date.now();save('hub.todos',todos);setTimeout(renderTodos,200)}};
+$('#todo-list').onchange=e=>{
+ const a=e.target.dataset.asg;if(a){const x=todos.find(t=>t.id===a);if(!x)return;let v=e.target.value;if(v===NEWM)v=askNewModel();x.model=v;x.u=Date.now();save('hub.todos',todos);renderTodos();return}
+ const id=e.target.dataset.tg;const x=todos.find(t=>t.id===id);if(x){x.done=e.target.checked;x.u=Date.now();save('hub.todos',todos);setTimeout(renderTodos,200)}};
 $('#todo-filters').onclick=e=>{const f=e.target.dataset.f;if(f){filter=f;renderTodos()}};
 $('#todo-clear').onclick=()=>{const n=todos.filter(x=>x.done).length;if(!n)return;if(confirm(`Supprimer ${n} tâche${n>1?'s':''} terminée${n>1?'s':''} ?`)){todos.filter(x=>x.done).forEach(x=>markDeleted(x.id));todos=todos.filter(x=>!x.done);save('hub.todos',todos);renderTodos()}};
 
@@ -757,16 +773,6 @@ $('#entry-form').onsubmit=async e=>{e.preventDefault();if(!V.key)return dlg.clos
  if(V.edit)Object.assign(V.edit,data);else V.items.push({id:uid(),...data});
  await vaultSave();dlg.close();renderVaultList();toast('Enregistré')};
 
-// ---------- sauvegarde
-$('#export').onclick=()=>{const data={app:'mon-espace',version:1,date:new Date().toISOString(),events,todos,notes,vault:load('hub.vault',null)};
- const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,1)],{type:'application/json'}));a.download=`mon-espace-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Sauvegarde exportée')};
-$('#import').onclick=()=>$('#importfile').click();
-$('#importfile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
- try{const d=JSON.parse(await f.text());if(d.app!=='mon-espace')throw 0;
-  if(!confirm('Remplacer toutes les données actuelles par cette sauvegarde ?'))return;
-  save('hub.events',d.events||[]);save('hub.todos',d.todos||[]);save('hub.notes',d.notes||[]);if(d.vault)save('hub.vault',d.vault);else localStorage.removeItem('hub.vault');
-  events=d.events||[];todos=d.todos||[];notes=d.notes||[];lockVault();renderHome();toast('Sauvegarde importée')}
- catch{toast('Fichier de sauvegarde invalide')}};
 
 // ---------- démarrage
 let startView='home';try{startView=localStorage.getItem('hub.view')||'home'}catch{}
