@@ -126,6 +126,7 @@ ul.plain.notelist li{cursor:pointer;flex-direction:column;align-items:stretch;ga
 .vrow{display:grid;grid-template-columns:36px 1fr 1fr auto;gap:12px;align-items:center;padding:11px 4px;border-top:1px solid var(--line)}
 .vrow:first-child{border-top:0}
 .avatar{width:36px;height:36px;border-radius:10px;background:var(--soft);color:var(--accent);display:grid;place-items:center;font-weight:700;text-transform:uppercase}
+.pin{text-align:center;font-size:22px;letter-spacing:.5em}
 .pw{font-family:ui-monospace,Consolas,monospace;font-size:13.5px}
 dialog{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);padding:22px;width:min(440px,calc(100vw - 32px))}
 dialog::backdrop{background:rgba(0,0,0,.35)}
@@ -267,18 +268,17 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
   <form class="card lockbox" id="vault-setup" hidden>
    <div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/></svg></div>
    <strong>Créer ton coffre</strong>
-   <input type="password" id="setup-pw" placeholder="Mot de passe maître (12 caractères min.)" autocomplete="new-password">
-   <div class="strength"><i id="setup-meter"></i></div>
-   <input type="password" id="setup-pw2" placeholder="Confirmer" autocomplete="new-password">
+   <input type="password" id="setup-pw" class="pin" placeholder="Code à 4 chiffres" inputmode="numeric" maxlength="4" autocomplete="new-password">
+   <input type="password" id="setup-pw2" class="pin" placeholder="Confirmer le code" inputmode="numeric" maxlength="4" autocomplete="new-password">
    <div class="err" id="setup-err"></div>
    <button class="btn">Créer le coffre</button>
-   <p class="warn">⚠️ Ce mot de passe n’est stocké nulle part. Si tu l’oublies, le contenu du coffre est <b>définitivement</b> perdu.</p>
+   <p class="warn">⚠️ Ce code n’est stocké nulle part. Si tu l’oublies, le contenu du coffre est <b>définitivement</b> perdu.</p>
   </form>
 
   <form class="card lockbox" id="vault-lock" hidden>
    <div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
    <strong>Coffre verrouillé</strong>
-   <input type="password" id="unlock-pw" placeholder="Mot de passe maître" autocomplete="current-password">
+   <input type="password" id="unlock-pw" class="pin" placeholder="Code" inputmode="numeric" autocomplete="current-password">
    <div class="err" id="unlock-err"></div>
    <button class="btn" id="unlock-btn">Déverrouiller</button>
   </form>
@@ -287,6 +287,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
    <div class="row" style="margin-bottom:14px">
     <input type="search" id="vault-search" class="grow" placeholder="Rechercher un compte">
     <button class="btn" id="vault-add">Ajouter</button>
+    <button class="btn ghost" id="vault-pin">Changer le code</button>
     <button class="btn ghost" id="vault-lockbtn">Verrouiller</button>
    </div>
    <div class="card" style="padding:6px 16px"><div id="vault-list"></div></div>
@@ -738,18 +739,21 @@ function lockVault(msg){V.key=null;V.items=[];V.shown.clear();clearTimeout(V.tim
 function touch(){if(!V.key)return;clearTimeout(V.timer);V.timer=setTimeout(()=>lockVault('Coffre verrouillé (inactivité)'),5*60*1000)}
 ['click','keydown','mousemove','touchstart'].forEach(ev=>document.addEventListener(ev,touch,{passive:true}));
 
-$('#setup-pw').oninput=e=>meter($('#setup-meter'),e.target.value);
 $('#vault-setup').onsubmit=async e=>{e.preventDefault();const p=$('#setup-pw').value,p2=$('#setup-pw2').value,err=$('#setup-err');
  if(gcfg.connected&&!SY.last){err.textContent='Synchro Google pas encore faite : reconnecte Google (onglet Agenda) pour récupérer ton coffre existant.';return}
- if(p.length<12){err.textContent='12 caractères minimum.';return}if(p!==p2){err.textContent='Les deux mots de passe ne correspondent pas.';return}
+ if(!/^\d{4}$/.test(p)){err.textContent='Le code doit faire 4 chiffres.';return}if(p!==p2){err.textContent='Les deux codes ne correspondent pas.';return}
  err.textContent='Création…';V.salt=crypto.getRandomValues(new Uint8Array(16));V.key=await deriveKey(p,V.salt,ITER);V.items=[];await vaultSave();
- $('#setup-pw').value=$('#setup-pw2').value='';err.textContent='';meter($('#setup-meter'),'');touch();renderVault();toast('Coffre créé')};
+ $('#setup-pw').value=$('#setup-pw2').value='';err.textContent='';touch();renderVault();toast('Coffre créé')};
 $('#vault-lock').onsubmit=async e=>{e.preventDefault();const st=load('hub.vault',null),err=$('#unlock-err'),btn=$('#unlock-btn');if(!st)return;
  err.textContent='';btn.disabled=true;btn.textContent='Vérification…';
  try{const salt=unb64(st.salt),key=await deriveKey($('#unlock-pw').value,salt,st.iter||ITER);const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(st.iv)},key,unb64(st.data));V.items=JSON.parse(td.decode(pt));V.key=key;V.salt=salt;$('#unlock-pw').value='';touch();renderVault()}
- catch{err.textContent='Mot de passe incorrect.';$('#unlock-pw').select()}
+ catch{err.textContent='Code incorrect.';$('#unlock-pw').value='';$('#unlock-pw').focus()}
  finally{btn.disabled=false;btn.textContent='Déverrouiller'}};
 $('#vault-lockbtn').onclick=()=>lockVault('Coffre verrouillé');
+$('#unlock-pw').oninput=e=>{if(/^\d{4}$/.test(e.target.value)&&!$('#unlock-btn').disabled)$('#vault-lock').requestSubmit()};
+$('#vault-pin').onclick=async()=>{if(!V.key)return;const a=(prompt('Nouveau code à 4 chiffres :')||'').trim();if(!a)return;if(!/^\d{4}$/.test(a)){toast('Le code doit faire 4 chiffres');return}
+ if((prompt('Confirme le nouveau code :')||'').trim()!==a){toast('Les deux codes ne correspondent pas');return}
+ V.salt=crypto.getRandomValues(new Uint8Array(16));V.key=await deriveKey(a,V.salt,ITER);await vaultSave();toast('Code du coffre changé')};
 $('#vault-search').oninput=renderVaultList;
 
 let clipT;async function copy(txt,what){try{await navigator.clipboard.writeText(txt);toast(`${what} copié — effacé dans 30 s`);clearTimeout(clipT);clipT=setTimeout(()=>navigator.clipboard.writeText('').catch(()=>{}),30000)}catch{toast('Copie impossible')}}
