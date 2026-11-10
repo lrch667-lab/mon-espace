@@ -62,6 +62,27 @@ input:focus,textarea:focus{border-color:var(--accent)}
 .calrow{display:flex;gap:10px;align-items:center;padding:6px 0;cursor:pointer;font-size:14px}
 .calrow input{margin:0;accent-color:var(--accent)}
 .evcal{display:block;font-size:12px;color:var(--muted)}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;padding:0 5px;border-radius:4px;margin-right:6px;line-height:16px;vertical-align:1px}
+.tag.cm{background:rgba(245,159,0,.2);color:#ffc04d}
+.tag.prs{background:rgba(123,147,252,.2);color:#aab8ff}
+.chip .tag{font-size:9px;padding:0 3px;margin-right:4px;line-height:13px}
+.agenda.wide{grid-template-columns:1fr}
+.calhead{flex-wrap:wrap}
+.seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:2px}
+.seg button{all:unset;cursor:pointer;padding:4px 11px;border-radius:7px;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--soft);color:var(--accent);font-weight:600}
+.cols{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(210px,1fr);overflow-x:auto;border-top:1px solid var(--line);margin:0 -20px -18px;min-height:260px}
+.cols.one{grid-auto-columns:1fr}
+.col{padding:6px 16px 16px;border-left:1px solid var(--line);min-width:0}
+.col:first-child{border-left:0}
+.colhead{display:flex;gap:8px;align-items:baseline;padding:8px 0 10px;font-size:14px}
+.col.now .colhead b{color:var(--accent)}
+.cnt{color:var(--muted);font-size:12px}
+.col li{align-items:flex-start}
+.addline{all:unset;cursor:pointer;color:var(--muted);font-size:14px;padding:8px 0;display:flex;gap:8px;align-items:center}
+.addline b{color:var(--danger);font-size:18px;font-weight:400;line-height:1}
+.addline:hover{color:var(--text)}
+.inl{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .more{font-size:11px;color:var(--muted);padding-left:4px}
 .addform{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 
@@ -159,21 +180,25 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
  <!-- AGENDA -->
  <section id="v-agenda" hidden>
   <h2>Agenda</h2><p class="sub">Clique sur un jour pour voir ou ajouter un événement.</p>
-  <div class="agenda">
-   <div class="card">
+  <div class="agenda" id="agenda-wrap">
+   <div class="card" style="min-width:0">
     <div class="calhead">
      <strong id="cal-title"></strong>
      <span class="due" id="cal-status"></span>
+     <div class="seg" id="cal-mode"><button data-m="day">Jour</button><button data-m="week">Semaine</button><button data-m="month">Mois</button></div>
      <button class="icon" id="cal-refresh" title="Actualiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
      <button class="btn ghost" id="cal-today" style="padding:6px 12px">Aujourd’hui</button>
      <button class="icon" id="cal-prev" aria-label="Mois précédent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button>
      <button class="icon" id="cal-next" aria-label="Mois suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></button>
     </div>
-    <div class="dow"><div>lun</div><div>mar</div><div>mer</div><div>jeu</div><div>ven</div><div>sam</div><div>dim</div></div>
-    <div class="cal" id="cal-grid"></div>
+    <div id="cal-month">
+     <div class="dow"><div>lun</div><div>mar</div><div>mer</div><div>jeu</div><div>ven</div><div>sam</div><div>dim</div></div>
+     <div class="cal" id="cal-grid"></div>
+    </div>
+    <div class="cols" id="cal-cols" hidden></div>
    </div>
    <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
-    <div class="card">
+    <div class="card" id="day-card">
      <h3 id="day-title" style="text-transform:none;letter-spacing:0;font-size:16px;color:var(--text)"></h3>
      <ul class="plain" id="day-events"></ul>
      <form class="addform" id="ev-form">
@@ -316,7 +341,7 @@ function renderHome(){
  $('#today-date').textContent=fmtLong(t);
  const now=new Date();loadMonth(now.getFullYear(),now.getMonth());
  const ev=dayEvents(t);
- $('#home-events').innerHTML=ev.length?ev.map(e=>`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="trunc">${esc(e.title)}</span></li>`).join(''):'<li class="empty">Rien de prévu aujourd’hui</li>';
+ $('#home-events').innerHTML=ev.length?ev.map(e=>`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="trunc">${tag(e)}${esc(e.title)}</span></li>`).join(''):'<li class="empty">Rien de prévu aujourd’hui</li>';
  const td=todos.filter(x=>!x.done).sort(byDue).slice(0,6);
  $('#home-todos').innerHTML=td.length?td.map(x=>`<li><input type="checkbox" class="check" data-done="${x.id}"><span class="grow trunc">${esc(x.text)}</span>${dueBadge(x)}</li>`).join(''):'<li class="empty">Tout est fait 🎉</li>';
  const nt=[...notes].sort((a,b)=>b.updated-a.updated).slice(0,4);
@@ -453,30 +478,66 @@ function dayEvents(k){
  return out.sort(byTime)}
 
 // ---------- agenda
-let cal=new Date();cal.setDate(1);let sel=today(),dayList=[];
+let cal=new Date();cal.setDate(1);let sel=today(),shown=[];
+let calMode='month';try{calMode=localStorage.getItem('hub.calview')||'month'}catch{}
 const X='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>';
 const OPEN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>';
+const addDays=(k,n)=>{const d=new Date(k+'T00:00');d.setDate(d.getDate()+n);return ymd(d)};
+// pastille CM (agenda commun / partagé) ou PRS (perso)
+function evKind(e){
+ if(e.src==='l')return'prs';
+ const c=G.cals.find(c=>c.id===e.calId);if(!c||!canWrite(c))return'';
+ return/commun/i.test(calName(c))||c.accessRole==='writer'?'cm':'prs'}
+function tag(e){const k=evKind(e);return k?`<span class="tag ${k}">${k==='cm'?'CM':'PRS'}</span>`:''}
+function evItem(e){
+ const i=shown.push(e)-1;
+ return`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="grow" style="min-width:0"><span style="display:block;overflow-wrap:anywhere">${tag(e)}${esc(e.title)}</span></span>${e.link?`<a class="icon" href="${esc(e.link)}" target="_blank" rel="noopener noreferrer" title="Ouvrir dans Google Agenda">${OPEN}</a>`:''}${e.canEdit?`<button class="icon" data-i="${i}" title="Supprimer">${X}</button>`:''}</li>`}
+function writableCals(){return gOn()?G.cals.filter(canWrite):[]}
+function calOptions(){const w=writableCals();return'<option value="local">Cet appareil uniquement</option>'+w.map(c=>`<option value="${esc(c.id)}"${c.id===gcfg.target?' selected':''}>${esc(calName(c))}</option>`).join('')}
+function colLabel(k,t){const d=new Date(k+'T00:00');const rel=k===t?'Aujourd’hui':k===addDays(t,1)?'Demain':cap(d.toLocaleDateString('fr-FR',{weekday:'long'}));return`${d.getDate()} ${cap(d.toLocaleDateString('fr-FR',{month:'short'}).replace('.',''))} · ${rel}`}
 function renderAgenda(){
- const y=cal.getFullYear(),m=cal.getMonth(),t=today();
- loadMonth(y,m);
- $('#cal-title').textContent=cap(cal.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}));
- $('#cal-status').textContent=G.cache[y+'-'+m]?.loading?'Synchro…':'';
+ if(document.activeElement?.closest?.('#cal-cols form'))return; // ne pas effacer une saisie en cours
+ shown=[];const t=today(),wide=calMode!=='month';
+ $('#agenda-wrap').classList.toggle('wide',wide);
+ $('#cal-month').hidden=wide;$('#cal-cols').hidden=!wide;$('#day-card').hidden=wide;
+ document.querySelectorAll('#cal-mode [data-m]').forEach(b=>b.classList.toggle('on',b.dataset.m===calMode));
  $('#cal-refresh').hidden=!gOn();
- const first=(new Date(y,m,1).getDay()+6)%7;let html='';
- for(let i=0;i<42;i++){
-  const d=new Date(y,m,1-first+i),k=ymd(d),evs=dayEvents(k);
-  html+=`<button class="day${d.getMonth()!==m?' out':''}${k===t?' today':''}${k===sel?' sel':''}" data-day="${k}"><span class="n">${d.getDate()}</span>${evs.slice(0,2).map(e=>`<span class="chip" style="--c:${e.color}">${esc(e.title)}</span>`).join('')}${evs.length>2?`<span class="more">+${evs.length-2}</span>`:''}</button>`;
+ let loading=false;
+ if(!wide){
+  const y=cal.getFullYear(),m=cal.getMonth();
+  loadMonth(y,m);loading=G.cache[y+'-'+m]?.loading;
+  $('#cal-title').textContent=cap(cal.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}));
+  const first=(new Date(y,m,1).getDay()+6)%7;let html='';
+  for(let i=0;i<42;i++){
+   const d=new Date(y,m,1-first+i),k=ymd(d),evs=dayEvents(k);
+   html+=`<button class="day${d.getMonth()!==m?' out':''}${k===t?' today':''}${k===sel?' sel':''}" data-day="${k}"><span class="n">${d.getDate()}</span>${evs.slice(0,2).map(e=>`<span class="chip" style="--c:${e.color}">${tag(e)}${esc(e.title)}</span>`).join('')}${evs.length>2?`<span class="more">+${evs.length-2}</span>`:''}</button>`;
+  }
+  $('#cal-grid').innerHTML=html;
+  $('#day-title').textContent=fmtLong(sel);
+  const dl=dayEvents(sel);
+  $('#day-events').innerHTML=dl.length?dl.map(evItem).join(''):'<li class="empty">Aucun événement</li>';
+  const s=$('#ev-cal');s.innerHTML=calOptions();s.value=writableCals().some(c=>c.id===gcfg.target)?gcfg.target:'local';s.hidden=!writableCals().length;
+ }else{
+  const n=calMode==='week'?7:1,days=[...Array(n)].map((_,i)=>addDays(sel,i));
+  const s=new Date(days[0]+'T00:00'),e=new Date(days[n-1]+'T00:00');
+  loadMonth(s.getFullYear(),s.getMonth());loadMonth(e.getFullYear(),e.getMonth());
+  loading=G.cache[s.getFullYear()+'-'+s.getMonth()]?.loading||G.cache[e.getFullYear()+'-'+e.getMonth()]?.loading;
+  $('#cal-title').textContent=n===1?fmtLong(sel):`${s.getDate()}${s.getMonth()!==e.getMonth()?' '+s.toLocaleDateString('fr-FR',{month:'short'}):''} – ${e.getDate()} ${e.toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}`;
+  const sel2=writableCals().length?`<select name="cal">${calOptions()}</select>`:'';
+  const c=$('#cal-cols');c.className='cols'+(n===1?' one':'');
+  c.innerHTML=days.map(k=>{const evs=dayEvents(k);return`<div class="col${k===t?' now':''}"><div class="colhead"><b>${n===1?fmtLong(k):colLabel(k,t)}</b><span class="cnt">${evs.length}</span></div><ul class="plain">${evs.map(evItem).join('')}</ul><button class="addline" data-add="${k}"><b>+</b>Ajouter</button><form class="inl" data-date="${k}" hidden><div class="row"><input type="time" name="tm" style="width:110px"><input type="text" name="ttl" placeholder="Titre" required></div>${sel2}<div class="row"><button class="btn">Ajouter</button><button type="button" class="btn ghost" data-cancel>Annuler</button></div></form></div>`}).join('');
  }
- $('#cal-grid').innerHTML=html;
- $('#day-title').textContent=fmtLong(sel);
- dayList=dayEvents(sel);
- const many=gOn()&&G.cals.length;
- $('#day-events').innerHTML=dayList.length?dayList.map((e,i)=>`<li><span class="dot" style="--c:${e.color}"></span><span class="time">${esc(e.time||'Journée')}</span><span class="grow" style="min-width:0"><span class="trunc" style="display:block">${esc(e.title)}</span>${many?`<span class="evcal trunc">${esc(e.cal)}</span>`:''}</span>${e.link?`<a class="icon" href="${esc(e.link)}" target="_blank" rel="noopener noreferrer" title="Ouvrir dans Google Agenda">${OPEN}</a>`:''}${e.canEdit?`<button class="icon" data-i="${i}" title="Supprimer">${X}</button>`:''}</li>`).join(''):'<li class="empty">Aucun événement</li>';
- // choix de l'agenda pour les nouveaux événements
- const w=gOn()?G.cals.filter(canWrite):[],s=$('#ev-cal');
- s.innerHTML='<option value="local">Cet appareil uniquement</option>'+w.map(c=>`<option value="${esc(c.id)}">${esc(calName(c))}</option>`).join('');
- s.value=w.some(c=>c.id===gcfg.target)?gcfg.target:'local';s.hidden=!w.length;
+ $('#cal-status').textContent=loading?'Synchro…':'';
  renderGPanel();
+}
+// ajoute un événement (local ou Google) ; renvoie true si OK
+async function addEvent(date,time,title,target){
+ if(target==='local'||!gOn()){events.push({id:uid(),date,time,title,u:Date.now()});save('hub.events',events);return true}
+ let body;
+ if(time){const d=new Date(`${date}T${time}`);d.setHours(d.getHours()+1);body={summary:title,start:{dateTime:`${date}T${time}:00`,timeZone:TZ},end:{dateTime:`${ymd(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`,timeZone:TZ}}}
+ else{const d=new Date(date+'T00:00');d.setDate(d.getDate()+1);body={summary:title,start:{date},end:{date:ymd(d)}}}
+ try{await gapi(`/calendars/${encodeURIComponent(target)}/events`,{method:'POST',body:JSON.stringify(body)});toast('Ajouté à Google Agenda');G.cache={};return true}
+ catch(err){toast(err.message);return false}
 }
 function renderGPanel(){
  const p=$('#gpanel');let h='<h3>Google Agenda</h3>';
@@ -520,28 +581,38 @@ $('#gpanel').addEventListener('submit',async e=>{e.preventDefault();
 });
 $('#ev-cal').onchange=e=>{gcfg.target=e.target.value;save('hub.gcal',gcfg)};
 $('#cal-grid').onclick=e=>{const b=e.target.closest('[data-day]');if(!b)return;sel=b.dataset.day;const d=new Date(sel+'T00:00');if(d.getMonth()!==cal.getMonth()){cal=new Date(d.getFullYear(),d.getMonth(),1)}renderAgenda();$('#ev-title').focus()};
-$('#cal-prev').onclick=()=>{cal.setMonth(cal.getMonth()-1);renderAgenda()};
-$('#cal-next').onclick=()=>{cal.setMonth(cal.getMonth()+1);renderAgenda()};
-$('#cal-today').onclick=()=>{cal=new Date();cal.setDate(1);sel=today();renderAgenda()};
+const syncCalToSel=()=>{const d=new Date(sel+'T00:00');cal=new Date(d.getFullYear(),d.getMonth(),1)};
+$('#cal-mode').onclick=e=>{const m=e.target.dataset.m;if(!m)return;calMode=m;try{localStorage.setItem('hub.calview',m)}catch{}if(m==='month')syncCalToSel();renderAgenda()};
+$('#cal-prev').onclick=()=>{if(calMode==='month')cal.setMonth(cal.getMonth()-1);else{sel=addDays(sel,calMode==='week'?-7:-1);syncCalToSel()}renderAgenda()};
+$('#cal-next').onclick=()=>{if(calMode==='month')cal.setMonth(cal.getMonth()+1);else{sel=addDays(sel,calMode==='week'?7:1);syncCalToSel()}renderAgenda()};
+$('#cal-today').onclick=()=>{sel=today();syncCalToSel();renderAgenda()};
 $('#cal-refresh').onclick=()=>{G.cache={};renderAgenda()};
 $('#ev-form').onsubmit=async e=>{e.preventDefault();
  const title=$('#ev-title').value.trim(),time=$('#ev-time').value,target=$('#ev-cal').value;if(!title)return;
- if(target==='local'||!gOn()){events.push({id:uid(),date:sel,time,title,u:Date.now()});save('hub.events',events)}
- else{
-  let body;
-  if(time){const d=new Date(`${sel}T${time}`);d.setHours(d.getHours()+1);body={summary:title,start:{dateTime:`${sel}T${time}:00`,timeZone:TZ},end:{dateTime:`${ymd(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`,timeZone:TZ}}}
-  else{const d=new Date(sel+'T00:00');d.setDate(d.getDate()+1);body={summary:title,start:{date:sel},end:{date:ymd(d)}}}
-  const btn=$('#ev-btn');btn.disabled=true;btn.textContent='Envoi…';
-  try{await gapi(`/calendars/${encodeURIComponent(target)}/events`,{method:'POST',body:JSON.stringify(body)});toast('Ajouté à Google Agenda');G.cache={}}
-  catch(err){toast(err.message);btn.disabled=false;btn.textContent='Ajouter';renderAgenda();return}
-  btn.disabled=false;btn.textContent='Ajouter';
- }
- $('#ev-title').value='';$('#ev-time').value='';renderAgenda()};
-$('#day-events').onclick=async e=>{const b=e.target.closest('button[data-i]');if(!b)return;const ev=dayList[+b.dataset.i];if(!ev)return;
+ const btn=$('#ev-btn');btn.disabled=true;btn.textContent='Envoi…';
+ const ok=await addEvent(sel,time,title,target);
+ btn.disabled=false;btn.textContent='Ajouter';
+ if(ok){$('#ev-title').value='';$('#ev-time').value=''}
+ renderAgenda()};
+// vues Jour / Semaine : ajout direct dans la colonne
+$('#cal-cols').addEventListener('click',e=>{
+ const a=e.target.closest('[data-add]');
+ if(a){document.querySelectorAll('#cal-cols form').forEach(f=>f.hidden=true);document.querySelectorAll('#cal-cols [data-add]').forEach(b=>b.hidden=false);
+  const f=a.nextElementSibling;f.hidden=false;a.hidden=true;f.ttl.focus();return}
+ if(e.target.closest('[data-cancel]')){const f=e.target.closest('form');f.hidden=true;f.previousElementSibling.hidden=false}
+});
+$('#cal-cols').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,title=f.ttl.value.trim();if(!title)return;
+ const target=f.cal?f.cal.value:'local';if(f.cal){gcfg.target=target;save('hub.gcal',gcfg)}
+ const b=f.querySelector('.btn');b.disabled=true;b.textContent='Envoi…';
+ const ok=await addEvent(f.dataset.date,f.tm.value,title,target);
+ document.activeElement?.blur?.();
+ if(ok)renderAgenda();else{b.disabled=false;b.textContent='Ajouter'}});
+// suppression (vue mois, semaine ou jour)
+$('#v-agenda').addEventListener('click',async e=>{const b=e.target.closest('button[data-i]');if(!b)return;const ev=shown[+b.dataset.i];if(!ev)return;
  if(ev.src==='l'){markDeleted(ev.id);events=events.filter(x=>x.id!==ev.id);save('hub.events',events);renderAgenda();return}
  if(!confirm(`Supprimer « ${ev.title} » de l’agenda « ${ev.cal} » ? (supprimé aussi pour les personnes qui le partagent)`))return;
  try{await gapi(`/calendars/${encodeURIComponent(ev.calId)}/events/${encodeURIComponent(ev.id)}`,{method:'DELETE'});toast('Supprimé');G.cache={};renderAgenda()}
- catch(err){toast(err.message)}};
+ catch(err){toast(err.message)}});
 
 // ---------- tâches
 let filter='active';
