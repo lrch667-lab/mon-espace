@@ -163,7 +163,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 <main>
  <!-- AUJOURD'HUI -->
  <section id="v-home">
-  <h2 id="hello">Bonjour</h2>
+  <h2 id="hello">Bien le bonjour Boss</h2>
   <p class="sub" id="today-date"></p>
   <div class="grid3">
    <div class="card"><h3>Agenda du jour <button class="link" data-go="agenda">Ouvrir</button></h3><ul class="plain" id="home-events"></ul></div>
@@ -349,7 +349,7 @@ document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.g
 // ---------- aujourd'hui
 function renderHome(){
  const t=today(),h=new Date().getHours();
- $('#hello').textContent=h>=18||h<5?'Bonsoir':'Bonjour';
+ $('#hello').textContent=h>=18||h<5?'Bien le bonsoir Boss':'Bien le bonjour Boss';
  $('#today-date').textContent=fmtLong(t);
  const now=new Date();loadMonth(now.getFullYear(),now.getMonth());
  shown=[];renderHomeWeek();
