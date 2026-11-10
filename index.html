@@ -150,6 +150,23 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 .mf-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
 .mf-table th,.mf-table td{text-align:left;padding:5px 4px;border-top:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
 .mf-table th{color:var(--muted);font-weight:500}
+.mfdash{display:flex;flex-direction:column;gap:10px}
+.mf-hero{background:linear-gradient(160deg,#151a2e,#10131c);padding:18px 20px}
+.mf-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mf-lbl{display:flex;align-items:center;gap:8px;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mf-dot{width:9px;height:9px;border-radius:50%;background:#2fd47a;box-shadow:0 0 0 3px rgba(47,212,122,.18);flex:none}
+.mf-dot.off{background:var(--danger);box-shadow:0 0 0 3px rgba(240,101,149,.18)}
+.mf-big{font-family:ui-monospace,Consolas,monospace;font-size:52px;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-top:8px;font-variant-numeric:tabular-nums}
+.mf-big span{font-size:24px;color:var(--muted);margin-left:6px}
+.mf-sub{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;color:var(--muted);margin-top:4px}
+.mf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.mf-k{padding:14px 16px;min-width:0}
+.mf-k b{display:block;font-family:ui-monospace,Consolas,monospace;font-size:21px;margin:8px 0 4px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mf-k b i{font-style:normal;font-size:14px;color:var(--muted)}
+.mf-k small{color:var(--muted);font-size:12px}
+.mf-bar{height:5px;border-radius:3px;background:var(--line);margin:6px 0;overflow:hidden}
+.mf-bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+#mf-model{max-width:130px}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:10}
 #toast.show{opacity:1;transform:translateX(-50%)}
 
@@ -206,7 +223,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
    <div class="cols" id="hw-cols"></div>
   </div>
   </div>
-  <aside class="card" id="mf"></aside>
+  <aside id="mf"></aside>
   </div>
  </section>
 
@@ -370,7 +387,7 @@ function ago(ts){const s=(Date.now()-ts)/1000;if(s<60)return'à l’instant';if(
 try{navigator.storage?.persist?.()}catch{}
 
 let events=load('hub.events',[]),todos=load('hub.todos',[]),notes=load('hub.notes',[]);
-let mfcfg=load('hub.myfeed',{key:'',url:'',u:0}),mfData=null,mfErr='',mfEdit=false,mfLoading=false; // MyFeed : propre à chaque compte
+let mfcfg=load('hub.myfeed',{key:'',goal:0,model:'',u:0}); // MyFeed : propre à chaque compte
 let models=load('hub.models',[]); // modèles auxquels on assigne des tâches
 let tomb=load('hub.tomb',{}); // éléments supprimés (pour que la suppression se propage aux autres appareils)
 function markDeleted(id){tomb[id]=Date.now();try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}}
@@ -483,7 +500,7 @@ async function syncNow(){
   if(changed){
    syncApplying=true;
    events=m.events;todos=m.todos;notes=m.notes;models=m.models||[];tomb=m.tomb;
-   if(m.myfeed&&m.myfeed.u!==mfcfg.u){mfcfg=m.myfeed;save('hub.myfeed',mfcfg);mfData=null}
+   if(m.myfeed&&m.myfeed.u!==mfcfg.u){const kc=m.myfeed.key!==mfcfg.key;mfcfg=m.myfeed;save('hub.myfeed',mfcfg);MF.stats=null;if(kc)MF.models=null}
    save('hub.models',models);save('hub.events',events);save('hub.todos',todos);save('hub.notes',notes);try{localStorage.setItem('hub.tomb',JSON.stringify(tomb))}catch{}
    if(m.vault)save('hub.vault',m.vault);
    syncApplying=false;
@@ -816,55 +833,79 @@ $('#entry-form').onsubmit=async e=>{e.preventDefault();if(!V.key)return dlg.clos
  await vaultSave();dlg.close();renderVaultList();toast('Enregistré')};
 
 
-// ---------- dashboard MyFeed (clé API propre à chaque session)
-const human=k=>cap(String(k).replace(/[_-]+/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').toLowerCase());
-const fmtVal=v=>typeof v==='number'?v.toLocaleString('fr-FR',{maximumFractionDigits:2}):String(v);
-function mfFlatten(o,pre='',out={tiles:[],tables:[]},depth=0){
- if(Array.isArray(o)){if(o.length&&typeof o[0]==='object')out.tables.push({name:pre||'Liste',rows:o});return out}
- for(const[k,v]of Object.entries(o||{})){if(k==='__t')continue;const name=pre?pre+' · '+human(k):human(k);
-  if(v==null)continue;
-  if(typeof v==='number'||typeof v==='boolean'||(typeof v==='string'&&v.length<=40))out.tiles.push([name,v]);
-  else if(Array.isArray(v)){if(v.length&&typeof v[0]==='object')out.tables.push({name,rows:v});else if(v.length)out.tiles.push([name,v.length+' éléments'])}
-  else if(typeof v==='object'&&depth<2)mfFlatten(v,name,out,depth+1)}
- return out}
-async function mfFetch(){
- if(!mfcfg.key||!mfcfg.url)return;mfLoading=true;mfErr='';renderMyFeed();
- try{const r=await fetch(mfcfg.url,{headers:{Authorization:'Bearer '+mfcfg.key,'X-API-Key':mfcfg.key,Accept:'application/json'}});
-  if(!r.ok)throw new Error(r.status===401||r.status===403?'Clé API refusée ('+r.status+').':'Erreur MyFeed ('+r.status+').');
-  mfData=await r.json();if(mfData&&typeof mfData==='object')mfData.__t=Date.now()}
- catch(e){mfErr=e instanceof TypeError?'Impossible de joindre l’API (adresse incorrecte ou accès bloqué par MyFeed).':e instanceof SyntaxError?'La réponse de l’API n’est pas du JSON : vérifie l’adresse.':e.message}
- mfLoading=false;renderMyFeed()}
+// ---------- dashboard MyFeed en direct (clé API propre à chaque session, via le relais Google Apps Script)
+const MF_RELAY='https://script.google.com/macros/s/AKfycbyOntAeh7bD41_H-WGUwkk-Pl2N2es1jyDVGhBphKcqXOv8B_yyw8pP_xTeNUVZgdZd/exec';
+const MF={models:null,stats:null,err:'',loading:false,edit:false,t:0,timer:null};
+const eur=v=>(v||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+async function mfApi(path){
+ const r=await fetch(MF_RELAY,{method:'POST',body:JSON.stringify({key:mfcfg.key,path})});
+ const j=await r.json();
+ if(j.status!==200){let m='';try{m=JSON.parse(j.body).error.message}catch{}throw new Error(m||('Erreur MyFeed ('+j.status+')'))}
+ return JSON.parse(j.body)}
+async function mfLoad(){
+ if(!mfcfg.key||MF.loading)return;MF.loading=true;renderMyFeed();
+ try{
+  const t=today(),y=addDays(t,-1),m1=t.slice(0,8)+'01',mq=mfcfg.model?'&model_id='+encodeURIComponent(mfcfg.model):'';
+  if(!MF.models)MF.models=(await mfApi('/models')).data||[];
+  const [rt,ry,rm,sb]=await Promise.all([
+   mfApi(`/revenue?from=${t}&to=${t}&by=period${mq}`),
+   mfApi(`/revenue?from=${y}&to=${y}&by=period${mq}`),
+   mfApi(`/revenue?from=${m1}&to=${t}&by=period${mq}`),
+   mfApi(`/subscribers?from=${y}&to=${t}${mq}`)]);
+  const sum=(r,f)=>(r.data||[]).reduce((a,x)=>a+(+x[f]||0),0);
+  const subs=sb.data||[],day=d=>subs.filter(x=>x.date===d);
+  let act=day(t).reduce((a,x)=>a+(+x.active_subscribers||0),0);if(!act)act=day(y).reduce((a,x)=>a+(+x.active_subscribers||0),0);
+  MF.stats={today:sum(rt,'total_eur'),yest:sum(ry,'total_eur'),month:sum(rm,'total_eur'),
+   newT:day(t).reduce((a,x)=>a+(+x.new_subscribers||0),0),newY:day(y).reduce((a,x)=>a+(+x.new_subscribers||0),0),active:act};
+  MF.err='';MF.t=Date.now()}
+ catch(e){MF.err=e instanceof TypeError?'Impossible de joindre MyFeed pour l’instant.':e.message}
+ MF.loading=false;renderMyFeed()}
+// actualisation en direct : toutes les 60 s quand la page Aujourd'hui est affichée
+setInterval(()=>{if(mfcfg.key&&!$('#v-home').hidden&&document.visibilityState==='visible')mfLoad()},60000);
+setInterval(()=>{const el=$('#mf-ago');if(el&&MF.t)el.textContent=ago(MF.t)},15000);
 function renderMyFeed(){
  const el=$('#mf');if(!el||el.contains(document.activeElement))return;
- const head=`<h3>Dashboard MyFeed <span class="row" style="gap:2px">${mfcfg.key&&mfcfg.url?`<button class="icon" id="mf-ref" title="Actualiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>`:''}${mfcfg.key?`<button class="icon" id="mf-set" title="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button>`:''}</span></h3>`;
  const open='<a class="btn ghost" href="https://myfeed.fans" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;text-decoration:none;margin-top:12px">Ouvrir MyFeed ↗</a>';
- if(!mfcfg.key||mfEdit){
-  el.innerHTML=head+`<form id="mf-form" style="display:flex;flex-direction:column;gap:8px">
-   <p class="warn" style="margin:0 0 4px">Ajoute ta clé API MyFeed pour afficher ton propre dashboard. Elle reste dans ta session : personne d’autre ne la voit.</p>
-   <input type="password" id="mf-key" placeholder="Clé API MyFeed" autocomplete="off" value="${esc(mfcfg.key)}" required>
-   <input type="url" id="mf-url" placeholder="Adresse de l’API (ex. https://myfeed.fans/api/…)" value="${esc(mfcfg.url)}">
+ if(!mfcfg.key||MF.edit){
+  el.className='card';
+  el.innerHTML=`<h3>Dashboard MyFeed</h3><form id="mf-form" style="display:flex;flex-direction:column;gap:8px">
+   <p class="warn" style="margin:0 0 4px">Colle ta clé API MyFeed (MyFeed › Paramètres › API, « Lecture seule » suffit). Elle reste dans ta session : personne d’autre ne la voit.</p>
+   <input type="password" id="mf-key" placeholder="mfk_…" autocomplete="off" value="${esc(mfcfg.key)}" required>
    <div class="row"><button class="btn grow">Enregistrer</button>${mfcfg.key?'<button type="button" class="btn ghost" id="mf-cancel">Annuler</button>':''}</div>
    ${mfcfg.key?'<button type="button" class="link" id="mf-del" style="color:var(--danger);align-self:flex-start">Supprimer la clé</button>':''}
   </form>`+open;return}
- let body='';
- if(!mfcfg.url)body='<p class="warn" style="margin:0">Clé enregistrée ✓. Ajoute l’adresse de l’API (indiquée dans ton espace MyFeed) via ⚙ pour voir tes chiffres ici.</p>';
- else if(mfLoading&&!mfData)body='<p class="empty" style="margin:0">Chargement…</p>';
- else if(mfErr)body=`<p class="err" style="margin:0">${esc(mfErr)}</p>`;
- else if(mfData){const f=mfFlatten(mfData);
-  body=(f.tiles.length?`<div class="mf-tiles">${f.tiles.slice(0,12).map(([k,v])=>`<div class="mf-tile"><small title="${esc(k)}">${esc(k)}</small><b>${esc(fmtVal(v))}</b></div>`).join('')}</div>`:'')+
-   f.tables.slice(0,2).map(t=>{const cols=Object.keys(t.rows[0]).filter(c=>typeof t.rows[0][c]!=='object').slice(0,4);return`<table class="mf-table"><caption style="text-align:left;color:var(--muted);font-size:12px;padding-top:10px">${esc(t.name)}</caption><tr>${cols.map(c=>`<th>${esc(human(c))}</th>`).join('')}</tr>${t.rows.slice(0,8).map(r=>`<tr>${cols.map(c=>`<td title="${esc(r[c]??'')}">${esc(fmtVal(r[c]??''))}</td>`).join('')}</tr>`).join('')}</table>`}).join('');
-  if(!body)body='<p class="empty" style="margin:0">Aucune donnée.</p>';
-  if(mfData.__t)body+=`<p class="meta" style="margin:10px 0 0">Mis à jour ${ago(mfData.__t)}</p>`}
- el.innerHTML=head+body+open;
- if(mfcfg.url&&!mfData&&!mfLoading&&!mfErr)mfFetch()}
-$('#mf').addEventListener('click',e=>{const id=e.target.closest('button')?.id;
- if(id==='mf-ref'){mfData=null;mfFetch()}
- else if(id==='mf-set'){mfEdit=true;renderMyFeed()}
- else if(id==='mf-cancel'){mfEdit=false;document.activeElement?.blur?.();renderMyFeed()}
- else if(id==='mf-del'){if(!confirm('Supprimer ta clé API MyFeed de cette session ?'))return;mfcfg={key:'',url:'',u:Date.now()};save('hub.myfeed',mfcfg);mfData=null;mfErr='';mfEdit=false;document.activeElement?.blur?.();renderMyFeed()}});
+ el.className='mfdash';
+ const s=MF.stats,mname=mfcfg.model?(MF.models||[]).find(m=>String(m.id)===String(mfcfg.model))?.username||'':'';
+ const sel=MF.models?`<select id="mf-model" class="mini" title="Modèle"><option value="">Tous les modèles</option>${MF.models.filter(m=>!m.archived).map(m=>`<option value="${esc(m.id)}"${String(m.id)===String(mfcfg.model)?' selected':''}>${esc(m.username)}</option>`).join('')}</select>`:'';
+ if(!s){el.innerHTML=`<div class="card mf-hero"><div class="mf-lbl"><span class="mf-dot${MF.err?' off':''}"></span>CA du jour</div>${MF.err?`<p class="err" style="margin:8px 0 0">${esc(MF.err)}</p><button class="link" id="mf-set" style="margin-top:8px">Modifier la clé</button>`:'<p class="empty" style="margin:8px 0 0">Chargement…</p>'}</div>`;if(!MF.loading&&!MF.err)mfLoad();return}
+ const d=new Date(),days=new Date(d.getFullYear(),d.getMonth()+1,0).getDate(),goal=+mfcfg.goal||0,pct=goal?Math.min(100,s.month/goal*100):0;
+ const ltv=s.active?s.month/s.active:0;
+ el.innerHTML=`<div class="card mf-hero">
+   <div class="mf-top"><div class="mf-lbl"><span class="mf-dot${MF.err?' off':''}"></span>CA du jour${mname?' · '+esc(mname.toUpperCase()):''}</div>
+    <span class="row" style="gap:2px">${sel}<button class="icon" id="mf-ref" title="Actualiser">${MF.loading?'…':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>'}</button><button class="icon" id="mf-set" title="Clé API"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button></span></div>
+   <div class="mf-big">${eur(s.today)}<span>€</span></div>
+   <div class="mf-sub">Hier · ${eur(s.yest)} €</div>
+   ${MF.err?`<p class="err" style="margin:6px 0 0;font-size:12.5px">${esc(MF.err)}</p>`:''}
+  </div>
+  <div class="mf-grid">
+   <div class="card mf-k"><div class="mf-lbl">Nouveaux abonnés</div><b>+${s.newT}</b><small>Hier · +${s.newY}</small></div>
+   <div class="card mf-k"><div class="mf-lbl">CA du mois</div><b>${eur(s.month)} <i>€</i></b><small>${d.toLocaleDateString('fr-FR',{month:'long'})}</small></div>
+   <div class="card mf-k"><div class="mf-lbl">LTV moyen</div><b>${eur(ltv)} <i>€</i></b><small>par abonné actif</small></div>
+   <div class="card mf-k" id="mf-goal" title="Cliquer pour changer l’objectif" style="cursor:pointer"><div class="mf-lbl">Objectif du mois</div><b>${goal?eur(goal)+' <i>€</i>':'—'}</b>
+    <div class="mf-bar"><i style="width:${pct}%"></i></div><small>${goal?`réalisé ${eur(s.month)} € · ${d.getDate()}/${days} j`:'Clique pour définir'}</small></div>
+  </div>
+  <p class="meta" style="margin:8px 2px 0">En direct · actualisé <span id="mf-ago">${ago(MF.t)}</span> · <a href="https://myfeed.fans" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">Ouvrir MyFeed ↗</a></p>`}
+$('#mf').addEventListener('click',e=>{
+ if(e.target.closest('#mf-goal')){const v=prompt('Objectif du mois (en €) :',mfcfg.goal||'');if(v==null)return;const n=parseFloat(String(v).replace(/\s/g,'').replace(',','.'));mfcfg={...mfcfg,goal:isFinite(n)&&n>0?n:0,u:Date.now()};save('hub.myfeed',mfcfg);renderMyFeed();return}
+ const id=e.target.closest('button')?.id;
+ if(id==='mf-ref')mfLoad();
+ else if(id==='mf-set'){MF.edit=true;renderMyFeed()}
+ else if(id==='mf-cancel'){MF.edit=false;document.activeElement?.blur?.();renderMyFeed()}
+ else if(id==='mf-del'){if(!confirm('Supprimer ta clé API MyFeed de cette session ?'))return;mfcfg={key:'',goal:mfcfg.goal||0,model:'',u:Date.now()};save('hub.myfeed',mfcfg);MF.stats=null;MF.models=null;MF.err='';MF.edit=false;document.activeElement?.blur?.();renderMyFeed()}});
+$('#mf').addEventListener('change',e=>{if(e.target.id!=='mf-model')return;mfcfg={...mfcfg,model:e.target.value,u:Date.now()};save('hub.myfeed',mfcfg);MF.stats=null;e.target.blur();mfLoad()});
 $('#mf').addEventListener('submit',e=>{e.preventDefault();
- mfcfg={key:$('#mf-key').value.trim(),url:$('#mf-url').value.trim(),u:Date.now()};save('hub.myfeed',mfcfg);
- mfData=null;mfErr='';mfEdit=false;document.activeElement?.blur?.();renderMyFeed();toast('Clé MyFeed enregistrée')});
+ mfcfg={...mfcfg,key:$('#mf-key').value.trim(),u:Date.now()};save('hub.myfeed',mfcfg);
+ MF.stats=null;MF.models=null;MF.err='';MF.edit=false;document.activeElement?.blur?.();renderMyFeed();mfLoad()});
 
 // ---------- écran d'accueil (connexion par email)
 function showWelcome(){let skip=false;try{skip=!!localStorage.getItem('hub.skipwelcome')}catch{}
