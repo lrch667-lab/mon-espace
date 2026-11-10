@@ -211,7 +211,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
   <div class="grid3">
    <div class="card"><h3>Agenda du jour <button class="link" data-go="agenda">Ouvrir</button></h3><ul class="plain" id="home-events"></ul></div>
    <div class="card"><h3>À faire <button class="link" data-go="todo">Ouvrir</button></h3><ul class="plain" id="home-todos"></ul></div>
-   <div class="card"><h3>Notes récentes <button class="link" data-go="notes">Ouvrir</button></h3><ul class="plain" id="home-notes"></ul></div>
+   <div class="card"><h3>Notes récentes <button class="link" data-go="notes">Ouvrir</button></h3><ul class="plain" id="home-notes"></ul><form id="home-note" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"><textarea id="hn-text" rows="2" placeholder="Nouvelle note… (1re ligne = titre)" style="resize:vertical"></textarea><button class="btn">Ajouter la note</button></form></div>
   </div>
   <div class="card" style="margin-top:16px;min-width:0">
    <div class="calhead">
@@ -555,6 +555,12 @@ function dayEvents(k){
  const seen=new Set();
  for(const c of Object.values(G.cache))for(const e of c.items||[])if(e.date===k&&gcfg.shown.includes(e.calId)&&!seen.has(e.calId+'|'+e.id)){seen.add(e.calId+'|'+e.id);out.push(e)}
  return out.sort(byTime)}
+
+// note rapide depuis la page Aujourd'hui
+$('#home-note').onsubmit=e=>{e.preventDefault();const t=$('#hn-text').value.trim();if(!t)return;
+ const NL=String.fromCharCode(10),lines=t.split(NL),title=lines[0].slice(0,80),body=(lines[0].length>80?lines[0].slice(80)+NL:'')+lines.slice(1).join(NL);
+ notes.push({id:uid(),title,body:body.trim(),updated:Date.now()});save('hub.notes',notes);$('#hn-text').value='';renderHome();toast('Note ajoutée')};
+$('#hn-text').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();$('#home-note').requestSubmit()}};
 
 // ---------- agenda
 let cal=new Date();cal.setDate(1);let sel=today(),shown=[];
