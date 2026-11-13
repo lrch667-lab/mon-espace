@@ -186,6 +186,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 .docrow .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 .docrow .nm:hover{color:var(--accent)}
 @media (max-width:820px){.docrow{grid-template-columns:38px 1fr auto}.docrow .dmeta{display:none}}
+.gbanner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;background:var(--soft);border:1px solid var(--accent);border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:14px}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:10}
 #toast.show{opacity:1;transform:translateX(-50%)}
 
@@ -220,6 +221,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 </nav>
 
 <main>
+ <div class="gbanner" id="gbanner" hidden><span id="gbanner-txt">Ta connexion Google a expiré : l’agenda et la synchro sont en pause.</span><button class="btn" id="gbanner-btn">Reconnecter Google</button></div>
  <!-- AUJOURD'HUI -->
  <section id="v-home">
   <h2 id="hello">Bien le bonjour Boss</h2>
@@ -515,11 +517,14 @@ async function gStart(){
   if(!gcfg.targetSet||(gcfg.target!=='local'&&!ids.includes(gcfg.target))){gcfg.target=G.cals.find(c=>c.primary)?.id||'local';gcfg.targetSet=true}
   save('hub.gcal',gcfg);G.cache={};G.err=''}
  catch(e){G.err=e.message}
- rerenderCal()}
+ rerenderCal();updateBanner()}
 // ---------- synchro tâches / notes / coffre via Google Drive (dossier caché de l'app)
 const DRIVE='https://www.googleapis.com/drive/v3/files',DUP='https://www.googleapis.com/upload/drive/v3/files';
 const SY={file:null,busy:false,again:false,last:0};
-function setSync(t){const el=$('#syncstat');if(el)el.textContent=t}
+function setSync(t){const el=$('#syncstat');if(el)el.textContent=t;updateBanner()}
+function updateBanner(){const b=$('#gbanner');if(!b)return;let pend='';try{pend=localStorage.getItem('hub.pendingcal')||''}catch{}
+ const show=!!gcfg.clientId&&location.protocol!=='file:'&&!gOn()&&(gcfg.connected||pend);
+ b.hidden=!show;if(show)$('#gbanner-txt').textContent=pend?'Connecte-toi à Google pour ajouter l’agenda Commun partagé avec toi.':'Ta connexion Google a expiré : l’agenda et la synchro sont en pause.'}
 const stamp=x=>x.u||x.updated||x.created||0;
 function mergeAll(l,r){
  const t={...(r.tomb||{})};for(const[k,v]of Object.entries(l.tomb||{}))t[k]=Math.max(t[k]||0,v);
@@ -1067,7 +1072,21 @@ else if(gcfg.connected&&gcfg.clientId&&location.protocol!=='file:'&&!gReturned){
  let last=0;try{last=+sessionStorage.getItem('hub.autoauth')||0}catch{}
  if(Date.now()-last>120000){try{sessionStorage.setItem('hub.autoauth',Date.now())}catch{}gConnect(true)}
 }
+// la connexion Google d'une page web dure 1 h : dès qu'elle expire, on la renouvelle tout seul
+// (aller-retour invisible chez Google, sans rien demander), sauf si une saisie est en cours.
+function autoRenew(){
+ if(gOn()||!gcfg.connected||!gcfg.clientId||location.protocol==='file:'||document.visibilityState!=='visible')return;
+ const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.value)return;
+ if(document.querySelector('dialog[open]'))return;
+ let last=0;try{last=+localStorage.getItem('hub.autoauth')||0}catch{}
+ if(Date.now()-last<10*60000)return; // pas plus d'une tentative toutes les 10 min (évite les boucles)
+ try{localStorage.setItem('hub.autoauth',Date.now())}catch{}gConnect(true)}
+setInterval(autoRenew,30000);
+document.addEventListener('visibilitychange',autoRenew);
 if(!gOn())setSync(gcfg.connected?'Reconnecte Google pour synchroniser':'');
+updateBanner();
+$('#gbanner-btn').onclick=()=>gConnect();
+$('#syncstat').onclick=()=>{if(!gOn()&&gcfg.clientId)gConnect()};
 setInterval(()=>{if(!$('#v-home').hidden)renderHome()},60000);
 </script>
 </body>
