@@ -498,11 +498,20 @@ async function gapi(path,opt={}){
  if(!r.ok){let m='Erreur Google ('+r.status+')';try{m=(await r.json()).error.message||m}catch{}throw new Error(m)}
  return r.status===204?null:r.json()}
 async function gStart(){
- try{const r=await gapi('/users/me/calendarList');
+ try{let pend='';try{pend=localStorage.getItem('hub.pendingcal')||''}catch{}
+  let r=await gapi('/users/me/calendarList');
+  if(pend&&!(r.items||[]).some(c=>c.id===pend)){
+   try{await gapi('/users/me/calendarList',{method:'POST',body:JSON.stringify({id:pend})});r=await gapi('/users/me/calendarList');toast('Agenda partagé ajouté ✓')}
+   catch(e){G.err='Agenda partagé introuvable : vérifie que l’invitation a bien été envoyée à ce compte Google.'}}
+  if(pend){try{localStorage.removeItem('hub.pendingcal')}catch{}}
   G.cals=(r.items||[]).filter(c=>!c.deleted&&c.accessRole!=='freeBusyReader').sort((a,b)=>(b.primary?1:0)-(a.primary?1:0)||calName(a).localeCompare(calName(b),'fr'));
   const ids=G.cals.map(c=>c.id);
   gcfg.shown=(gcfg.shown||[]).filter(id=>ids.includes(id));
   if(!gcfg.shown.length)gcfg.shown=G.cals.filter(c=>c.primary||c.selected).map(c=>c.id);
+  // tout nouvel agenda (ex. « Commun » partagé par l'associé) est affiché automatiquement
+  if(gcfg.known)for(const id of ids)if(!gcfg.known.includes(id)&&!gcfg.shown.includes(id))gcfg.shown.push(id);
+  for(const c of G.cals)if(/commun/i.test(calName(c))&&!gcfg.shown.includes(c.id)&&!(gcfg.known||[]).includes(c.id))gcfg.shown.push(c.id);
+  gcfg.known=ids;
   if(!gcfg.targetSet||(gcfg.target!=='local'&&!ids.includes(gcfg.target))){gcfg.target=G.cals.find(c=>c.primary)?.id||'local';gcfg.targetSet=true}
   save('hub.gcal',gcfg);G.cache={};G.err=''}
  catch(e){G.err=e.message}
@@ -675,12 +684,16 @@ function renderGPanel(){
    <input type="email" id="g-share-mail" placeholder="Adresse Gmail de ton associé" required>
    <button class="btn" id="g-share-btn">Partager</button>
    <span class="warn">Il reçoit une invitation et peut ajouter, modifier et supprimer des événements.</span></form>
+  ${own.filter(c=>/commun/i.test(calName(c))).map(c=>`<div class="addform"><strong style="font-size:14px">Lien à envoyer à ton associé</strong><span class="warn">En l’ouvrant, l’agenda « ${esc(calName(c))} » s’ajoute tout seul chez lui.</span><div class="row"><input type="text" readonly value="${esc(REDIRECT+'?cal='+encodeURIComponent(c.id))}" onclick="this.select()"><button type="button" class="btn ghost" data-copylink="${esc(REDIRECT+'?cal='+encodeURIComponent(c.id))}">Copier</button></div></div>`).join('')}
+  <form id="g-addcal" class="addform"><strong style="font-size:14px">Ajouter un agenda partagé avec moi</strong>
+   <div class="row"><input type="text" id="g-addcal-in" placeholder="Lien reçu ou ID de l’agenda" required><button class="btn">Ajouter</button></div></form>
   <button class="link" id="g-disc" style="margin-top:12px">Déconnecter Google</button>`;
  }
  if(G.err)h+=`<p class="err" style="margin:10px 0 0">${esc(G.err)}</p>`;
  p.innerHTML=h;
 }
 $('#gpanel').addEventListener('click',e=>{
+ const cl=e.target.closest('[data-copylink]');if(cl){navigator.clipboard.writeText(cl.dataset.copylink).then(()=>toast('Lien copié')).catch(()=>toast('Copie impossible'));return}
  if(e.target.id==='g-connect')gConnect();
  else if(e.target.id==='g-disc'){if(confirm('Déconnecter Google Agenda sur cet appareil ?'))gDisconnect()}
  else if(e.target.id==='g-reset'){gcfg.clientId='';gcfg.connected=false;save('hub.gcal',gcfg);renderGPanel()}
@@ -691,6 +704,8 @@ $('#gpanel').addEventListener('change',e=>{const id=e.target.dataset.gshow;if(!i
 $('#gpanel').addEventListener('submit',async e=>{e.preventDefault();
  if(e.target.id==='g-cid'){const v=$('#g-cid-in').value.trim();if(!/\.apps\.googleusercontent\.com$/.test(v)){G.err='Cet ID ne ressemble pas à un ID client Google.';renderGPanel();return}
   gcfg.clientId=v;G.err='';save('hub.gcal',gcfg);renderGPanel();return}
+ if(e.target.id==='g-addcal'){let v=$('#g-addcal-in').value.trim();try{const u=new URL(v);v=u.searchParams.get('cal')||v}catch{}
+  if(!v)return;try{localStorage.setItem('hub.pendingcal',v)}catch{}await gStart();return}
  if(e.target.id==='g-share'){
   const mail=$('#g-share-mail').value.trim();let calId=$('#g-share-cal').value;const btn=$('#g-share-btn');btn.disabled=true;btn.textContent='Partage…';
   try{
@@ -1042,6 +1057,7 @@ $('#welcome-form').onsubmit=e=>{e.preventDefault();const m=$('#welcome-mail').va
 $('#welcome-skip').onclick=()=>{try{localStorage.setItem('hub.skipwelcome','1')}catch{}$('#welcome').hidden=true};
 
 // ---------- démarrage
+(function(){const q=new URLSearchParams(location.search),c=q.get('cal');if(c){try{localStorage.setItem('hub.pendingcal',c)}catch{}history.replaceState(null,'',location.pathname)}})();
 let startView='home';try{startView=localStorage.getItem('hub.view')||'home'}catch{}
 show(startView);
 showWelcome();
