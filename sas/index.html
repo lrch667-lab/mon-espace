@@ -1,0 +1,453 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><style>[hidden]{display:none!important}html{color-scheme:dark}body{margin:0}</style>
+<title>Planning VA Warmup Insta</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@700&display=swap">
+<style>
+/* Layout: une seule carte centrée = les tâches du jour ; réglages repliés en bas */
+:root{
+  --bg:#f5f6fa; --surface:#ffffff; --fg:#191c2b; --muted:#6a6f86; --line:#e1e4ee;
+  --accent:#4b3fd1; --no:#b3261e; --no-soft:#fbe7e5;
+  --passif:#3b6fd8; --transition:#c27a07; --actif:#d23f74; --full:#16865a;
+  --font-body:"Inter","Segoe UI",system-ui,sans-serif; --font-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12131b; --surface:#1b1d29; --fg:#eceef6; --muted:#9ca1b8; --line:#2c2f40; --accent:#9d94ff;
+  --no:#ff8a80; --no-soft:#3a1d1b; --passif:#7da4f5; --transition:#f0b44c; --actif:#f17ba6; --full:#4fcf95; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12131b; --surface:#1b1d29; --fg:#eceef6; --muted:#9ca1b8; --line:#2c2f40; --accent:#9d94ff;
+  --no:#ff8a80; --no-soft:#3a1d1b; --passif:#7da4f5; --transition:#f0b44c; --actif:#f17ba6; --full:#4fcf95; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px}
+.wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.p-passif{--ph:var(--passif)} .p-transition{--ph:var(--transition)} .p-actif{--ph:var(--actif)} .p-full{--ph:var(--full)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:14px}
+.head{display:flex;align-items:baseline;gap:12px}
+.dnum{font-family:var(--font-mono);font-weight:700;font-size:28px;color:var(--ph,var(--accent))}
+.ddate{color:var(--muted);font-size:14px;text-transform:capitalize}
+.prog{height:4px;border-radius:4px;background:var(--line);overflow:hidden}
+.prog i{display:block;height:100%;background:var(--ph,var(--accent));width:0;transition:width .2s}
+.tasks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.task{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start}
+.task input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--ph,var(--accent));cursor:pointer}
+.task label{cursor:pointer}
+.task input:checked + label{text-decoration:line-through;color:var(--muted)}
+.task.no{color:var(--no);background:var(--no-soft);border-radius:8px;padding:6px 8px;margin-inline:-8px}
+.task.tip{color:var(--muted);font-size:14px}
+.ico{text-align:center;font-weight:700}
+.msg{margin:0;color:var(--muted)}
+.done{color:var(--ph,var(--accent));font-weight:600;margin:0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.tab{font:600 13px var(--font-body);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 12px;cursor:pointer}
+.tab[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+details{color:var(--muted);font-size:13px;text-align:center}
+summary{cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+.set{margin-top:10px;display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:center;align-items:center}
+.set label{display:flex;align-items:center;gap:6px}
+.set input{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+.set input[type=number]{width:60px}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.prog i{transition:none}}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start}
+.card-top{display:flex;align-items:center;gap:8px}
+.acc{font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.card-top .dnum{margin-left:auto}
+.ddate{display:block;margin-top:-8px}
+.count{margin:0;font-size:13px;color:var(--muted)}
+.alert{font-size:13px;color:var(--muted);text-align:center;margin:0}
+.task.proxy{background:#ffd60a;color:#2b2300;font-weight:700;letter-spacing:.06em;border-radius:8px;padding:6px 8px;margin-inline:-8px}
+.task.proxy input{accent-color:#2b2300}
+.task.proxy input:checked + label{color:#6b5a00}
+.gate{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.gate h1{font-size:clamp(22px,4vw,30px);margin:0;text-wrap:balance}
+.gate .sub{margin:0;font-size:17px;color:var(--muted)}
+.go{font:700 17px var(--font-body);background:var(--accent);color:#fff;border:0;border-radius:12px;padding:14px 36px;cursor:pointer}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;align-items:center;gap:12px;background:var(--bg);padding-block:8px}
+.topbar span{color:var(--muted);font-size:14px;flex:1}
+.finis{font:800 16px var(--font-body);letter-spacing:.08em;background:#d7263d;color:#fff;border:0;border-radius:12px;padding:12px 26px;cursor:pointer}
+.finis.sure{background:#9e1729}
+#sas[hidden]{display:none!important}
+.chrono{display:flex;align-items:center;gap:12px;border:2px solid #ffd60a;border-radius:12px;padding:10px 14px}
+.chrono b{font:700 32px var(--font-mono);font-variant-numeric:tabular-nums;color:var(--fg)}
+.chrono span{font-size:13px;color:var(--muted)}
+.chrono.fini{background:#ffd60a;border-color:#ffd60a}
+.chrono.fini b,.chrono.fini span{color:#2b2300}
+.recap{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:16px}
+.recap-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.recap-head h2{font-size:18px;margin:0;flex:1}
+.recap-head input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.stat b{font:700 20px var(--font-mono);font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.recap h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0}
+.tl{list-style:none;margin:0;padding:0;font-size:14px;display:flex;flex-direction:column;gap:5px}
+.tl li{display:grid;grid-template-columns:48px 1fr;gap:10px}
+.tl time{font-family:var(--font-mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tl .tour{font-weight:600;color:var(--full)}
+.tl .off{color:var(--muted);text-decoration:line-through}
+.recap details{text-align:left;font-size:14px;color:var(--fg)}
+.recap details summary{color:var(--accent);font-weight:600;margin-bottom:8px}
+</style>
+
+</head><body>
+<div class="wrap">
+  <section class="gate" id="gate"><p class="msg">Chargement…</p></section>
+  <div id="sas" hidden style="display:flex;flex-direction:column;gap:16px">
+    <div class="topbar"><span id="t_debut"></span><button class="finis" id="finis" type="button">FINIS</button></div>
+    <div class="cards" id="cards"></div>
+    <p class="alert">Avertissement ou vérification Instagram : tu arrêtes tout, capture d'écran, tu m'envoies. Tu ne cliques sur rien.</p>
+  </div>
+  <details>
+    <summary>Réglages</summary>
+    <div class="set">
+      <label for="s_long">J1 du warmup long <input type="date" id="s_long"></label>
+      <label for="s_court">J1 du warmup express <input type="date" id="s_court"></label>
+      <label for="n_long">Comptes long <input type="number" id="n_long" min="0" max="50"></label>
+      <label for="n_court">Comptes express <input type="number" id="n_court" min="0" max="50"></label>
+      <span id="sync"></span>
+    </div>
+  </details>
+  <section class="recap" id="recap" hidden aria-label="Récap du VA">
+    <div class="recap-head"><h2>Récap du VA · visible par toi seul</h2><input type="date" id="r_date" aria-label="Jour du récap"></div>
+    <div class="stats" id="r_stats"></div>
+    <div id="r_body"></div>
+  </section>
+</div>
+
+<script>
+// --- Stockage partagé : script Google (Apps Script). Même interface que la base de l'artifact. ---
+const API="https://script.google.com/macros/s/AKfycbwdu_ZsvJg_JfrUKL5vWEGO7JkHaF_U2xQea64arnM7gI3ToSvtKY3nvmYfwbCLOw0Q/exec";
+let deviceId="";try{deviceId=localStorage.getItem("sas_dev")||"";if(!deviceId){deviceId="d"+Math.random().toString(36).slice(2,10);localStorage.setItem("sas_dev",deviceId)}}catch(e){deviceId="anon"}
+let bossKey="";
+try{const u=new URL(location.href),b=u.searchParams.get("boss");if(b){localStorage.setItem("sas_boss",b);u.searchParams.delete("boss");history.replaceState(null,"",u.pathname+u.search+u.hash)}bossKey=localStorage.getItem("sas_boss")||""}catch(e){}
+async function api(body){
+  const r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)});
+  const j=await r.json();if(!j.ok)throw j;return j.data;
+}
+function makeDb(){
+  const store={},listeners=new Set();let seq=0,pending=0,first=false;
+  const snapDoc=(col,id)=>{const v=(store[col]||{})[id];return {id,exists:v!==undefined,data:()=>v}};
+  const snapCol=col=>{const c=store[col]||{};return {docs:Object.keys(c).map(id=>({id,data:()=>c[id]}))}};
+  const notify=()=>{if(first)listeners.forEach(l=>{try{l()}catch(e){}})};
+  async function poll(){
+    if(document.hidden&&first)return;
+    const s=seq;
+    try{const d=await api({a:"state"});
+      if(s!==seq||pending>0)return;
+      for(const k of Object.keys(store))if(!(k in d))store[k]={};
+      Object.assign(store,d);first=true;setSync(true);notify();
+    }catch(e){setSync(false)}
+  }
+  setTimeout(poll,0);setInterval(poll,6000);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)poll()});
+  async function write(body,apply){
+    seq++;pending++;apply();notify();
+    try{await api(body)}finally{pending--}
+  }
+  function doc(path){
+    const i=path.indexOf("/"),col=path.slice(0,i),id=path.slice(i+1);
+    return {
+      set:data=>col==="journal"?api({a:"set",col,id,data}):write({a:"set",col,id,data},()=>{(store[col]=store[col]||{})[id]=data}),
+      delete:()=>write({a:"del",col,id},()=>{if(store[col])delete store[col][id]}),
+      get:async()=>{const v=await api({a:"get",col,id});return {id,exists:v!=null,data:()=>v}},
+      onSnapshot(cb){const l=()=>cb(snapDoc(col,id));listeners.add(l);if(first)l();return ()=>listeners.delete(l)}
+    };
+  }
+  function collection(col){
+    return {
+      doc:id=>doc(col+"/"+id),
+      onSnapshot(cb){const l=()=>cb(snapCol(col));listeners.add(l);if(first)l();return ()=>listeners.delete(l)},
+      where(f,op,v){return {onSnapshot(cb,err){
+        let stop=false;
+        const run=async()=>{if(stop)return;try{const d=await api({a:"recap",key:bossKey,date:v});if(!stop)cb({docs:(d[col]||[]).map(x=>({id:"",data:()=>x}))})}catch(e){err&&err(e)}};
+        run();const t=setInterval(run,15000);return ()=>{stop=true;clearInterval(t)};
+      }}}
+    };
+  }
+  return {doc,collection};
+}
+function setSync(ok){const el=document.querySelector("#sync");if(el)el.textContent=ok?"Synchronisé":"Hors ligne, nouvel essai…"}
+const sasUser={isOwner:async()=>{if(!bossKey)return false;try{return !!(await api({a:"who",key:bossKey})).boss}catch(e){return false}},id:async()=>deviceId};
+
+const PH_UNUSED={passif:["passif","Phase passive","Construction du score de confiance, silence total"],
+transition:["transition","Phase de transition","Premières publications, montée lente et contrôlée"],
+actif:["actif","Phase active","Montée en cadence"],
+full:["full","Phase full","Régime de croisière, volume maximum sûr"]};
+// k: do (à cocher) | key (à cocher, important) | no (interdit) | tip (info)
+const T=(t,k="do")=>({t,k});
+const inter=T("Interactions 10 min (likes, réponses, commentaires dans la niche)");
+const LONG=[
+ ["passif",[T("Scroll du feed 15–20 min, à une heure au hasard"),T("5 likes sur des posts de la niche"),T("3 abonnements ciblés (comptes neutres)"),T("Regarder au moins 10 reels en entier"),T("Aucune publication","no")]],
+ ["passif",[T("Scroll du feed 15–20 min, horaire différent de J1"),T("5 likes sur des posts de la niche"),T("3 abonnements ciblés (comptes neutres)"),T("Regarder au moins 10 reels en entier"),T("Aucune publication","no")]],
+ ["passif",[T("Scroll + reels 15 min"),T("Mettre la photo de profil + une bio neutre, sans lien","key"),T("8 à 10 likes dans la niche"),T("3 à 5 abonnements"),T("Regarder des stories + répondre à 1 sondage"),T("Aucune publication","no")]],
+ ["passif",[T("Scroll + reels 15 min"),T("Vérifier que photo et bio sont bien en place (pas de lien)"),T("8 à 10 likes dans la niche"),T("3 à 5 abonnements"),T("Regarder des stories + répondre à 1 sondage"),T("Aucune publication","no")]],
+ ["passif",[T("Scroll + reels 15 min"),T("10 likes, répartis matin et soir"),T("3 à 5 abonnements"),T("1 à 2 commentaires courts et neutres"),T("Aucune publication","no")]],
+ ["passif",[T("Scroll + reels 15 min"),T("10 likes, répartis matin et soir"),T("3 à 5 abonnements"),T("1 à 2 commentaires courts et neutres"),T("Aucune publication","no")]],
+ ["passif",[T("Scroll + reels 20 min"),T("10 likes"),T("3 abonnements"),T("Regarder des stories + répondre aux sondages"),T("2 à 3 commentaires dans la niche"),T("Bilan : le compte doit être sain (pas d'avertissement, pas de blocage) avant J8","key")]],
+ ["transition",[T("Publier le 1er carrousel : neutre, sans CTA, sans lien","key"),T("Poster 1 story + créer la 1re story à la une (bulle) thématique","key"),inter,T("Pas encore de reels","no")]],
+ ["transition",[T("Poster 1 story et l'ajouter à la bulle"),inter,T("Pas de nouveau carrousel aujourd'hui","tip"),T("Pas encore de reels","no")]],
+ ["transition",[T("Publier le 2e carrousel, avec une légende différente du 1er","key"),T("Poster 2 stories + alimenter les bulles"),inter,T("Pas de reel, pas de CTA, pas de lien","no")]],
+ ["transition",[T("Publier le 1er reel neutre, à une heure décalée (pas à heure pile)","key"),T("Poster 2 stories + alimenter les bulles"),inter,T("Pas de CTA, pas de lien","no")]],
+ ["transition",[T("Publier 2 reels à des horaires variés"),T("Stories + bulles (jusqu'à 5 bulles au total)"),inter]],
+ ["transition",[T("Publier 2 reels à des horaires variés"),T("Publier 1 carrousel (légende unique)","key"),T("Stories + bulles (jusqu'à 5)"),inter]],
+ ["transition",[T("Publier 2 reels à des horaires variés"),T("Stories + bulles (jusqu'à 5)"),inter]],
+ ["actif",[T("Publier 2 à 3 reels"),T("Publier 1 carrousel (légende unique)","key"),T("Stories + bulles (jusqu'à 8)"),inter,T("Pas de lien en bio","no")]],
+ ["actif",[T("Publier 2 à 3 reels"),T("Stories + bulles (jusqu'à 8)"),inter,T("Pas de lien en bio","no")]],
+ ["actif",[T("Publier 2 à 3 reels"),T("Publier 1 carrousel (légende unique)","key"),T("Stories + bulles (jusqu'à 8)"),inter,T("Pas de lien en bio","no")]],
+ ["actif",[T("Publier 2 à 3 reels"),T("Publier 1 carrousel (légende unique)","key"),T("Stories + bulles (jusqu'à 10)"),inter,T("Pas de lien en bio","no")]],
+ ["actif",[T("Publier 2 à 3 reels"),T("Épingler les 3 carrousels les plus forts en haut de la grille","key"),T("Stories + bulles (jusqu'à 10)"),inter,T("Pas de lien en bio","no")]],
+ ["actif",[T("Publier 2 à 3 reels"),T("Publier 1 carrousel (légende unique)","key"),T("Stories + bulles (jusqu'à 10)"),inter,T("Pas de lien en bio","no")]],
+ ["actif",[T("Publier 2 à 3 reels"),T("Stories + bulles (10)"),inter,T("Audit : vérifier le score et les performances, noter les chiffres pour le boss","key")]],
+ ["full",[T("Publier 2 à 3 reels à des horaires variés"),T("Publier 1 carrousel (légende unique)","key"),T("Stories du jour + bulles complètes (10)"),inter,T("Lien en story à la une seulement si 2K abonnés ou plus. Jamais en bio avant 5K","tip")]],
+ ["full",[T("Publier 2 à 3 reels à des horaires variés"),T("Stories du jour + bulles complètes (10)"),inter]],
+ ["full",[T("Publier 2 à 3 reels à des horaires variés"),T("Publier 1 carrousel (légende unique)","key"),T("Stories du jour + bulles complètes (10)"),inter]],
+ ["full",[T("Publier 2 à 3 reels à des horaires variés"),T("Stories du jour + bulles complètes (10)"),inter]],
+ ["full",[T("Publier 2 à 3 reels"),T("Retirer de la grille les reels les plus faibles","key"),T("Stories + bulles (10)"),inter]],
+ ["full",[T("Publier 2 à 3 reels"),T("Publier 1 carrousel (légende unique)","key"),T("Stories + bulles (10)"),inter]],
+ ["full",[T("Publier 2 à 3 reels"),T("Stories + bulles (10)"),inter,T("Audit hebdo : score + statistiques, changer les couvertures si besoin","key"),T("Lien en bio seulement si 5K abonnés, sinon story à la une","key"),T("Compte considéré comme chaud : garder la même routine","tip")]]
+];
+
+const rep=T("Le soir : envoyer le reporting (chiffres réels, horaires des posts, capture du profil, problèmes)","key");
+const scroll=T("Scroll normal 15–20 min");
+const SHORT_FIX=[
+ ["passif",[T("Prérequis vérifiés : un seul appareil, IP stable sans VPN, photo + bio prêtes, liste des comptes de la niche reçue","key"),T("Scroll feed + reels 20 min, en 2 sessions (matin et soir)"),T("8 likes dans la niche, répartis dans la journée"),T("3 abonnements à des comptes neutres de la niche"),T("Regarder au moins 10 reels en entier"),T("Ajouter la photo de profil + la bio neutre (sans lien, sans CTA)","key"),T("Aucune publication (post, story, reel)","no"),rep]],
+ ["passif",[T("Scroll feed + reels 20 min, en 2 sessions, à d'autres heures qu'hier"),T("10 likes, répartis dans la journée"),T("3 à 5 abonnements à des comptes neutres de la niche"),T("2 à 3 commentaires courts et neutres (une phrase, pas de lien, pas de promo)"),T("Regarder des stories + répondre à 1 sondage"),T("Aucune publication","no"),rep]],
+ ["transition",[T("Publier 1 carrousel neutre, sans CTA ni lien, à une heure non ronde (ex. 11h17)","key"),T("Publier 1 story + créer la 1re bulle thématique","key"),inter,scroll,T("Légende unique, jamais copiée-collée","tip"),T("Pas de reel, pas de CTA, pas de lien en bio","no"),rep]],
+ ["transition",[T("Publier 1 reel neutre, à une heure décalée (pas à heure pile), sans CTA","key"),T("Publier 2 stories pour alimenter la bulle"),inter,scroll,T("Pas de CTA, pas de lien en bio, pas plus d'1 reel","no"),rep]]
+];
+function shortDay(d){
+  if(d<=4)return SHORT_FIX[d-1];
+  if(d<=8){const t=[T("Publier 1 à 2 reels, horaires variés")];
+    if(d===5||d===7)t.push(T("Publier 1 carrousel (légende unique)","key"));
+    t.push(T("1 à 2 stories, bulles jusqu'à 5"),inter,scroll);
+    if(d===8)t.push(T("Passer à 2–3 reels par jour seulement après le feu vert du boss","tip"));
+    t.push(T("Pas de lien en bio","no"),rep);return ["actif",t]}
+  const t=[T("Publier 2 à 3 reels, horaires variés")];
+  if([0,2,4].includes((d-9)%7))t.push(T("Publier 1 carrousel (légende unique)","key"));
+  t.push(T("Stories du jour, bulles jusqu'à 10"),inter,scroll,T("Lien : story à la une dès 2K abonnés, en bio seulement à 5K","tip"),rep);
+  return ["full",t];
+}
+// « ROTA PROXY » en première et dernière tâche de chaque jour, sur les deux tableaux
+const withProxy=day=>day?[day[0],[T("ROTA PROXY","proxy"),...day[1].filter(t=>t!==rep),T("ROTA PROXY","proxy")]]:null;
+const PLANS={long:{nom:"Long · 28 j",get:d=>withProxy(d<=28?LONG[d-1]:null)},court:{nom:"Express · 4 j",get:d=>withProxy(shortDay(d))}};
+const normCfg=r=>({long:{start:(r.long&&r.long.start)||"",nb:r.long&&r.long.nb!=null?r.long.nb:4},court:{start:(r.court&&r.court.start)||"",nb:r.court&&r.court.nb!=null?r.court.nb:2}});
+let cfg=normCfg({}),done={},tours={},db=null,local=false,busy={};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const parisISO=()=>new Date().toLocaleDateString("en-CA",{timeZone:"Europe/Paris"});
+const dayNum=start=>Math.round((Date.parse(parisISO()+"T12:00:00Z")-Date.parse(start+"T12:00:00Z"))/864e5)+1;
+function dateOf(start,d){const x=new Date(start+"T12:00:00");x.setDate(x.getDate()+d-1);return x}
+const fmt=x=>x.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+const tourId=plan=>`${plan}_${parisISO()}`;
+let me={owner:false,id:""},atMap={},recapDate=parisISO(),unsubR=[],jr=[],pres=[],lastBeat=Date.now();
+const NOM={long:"Long",court:"Express"};
+const hm=t=>new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Paris"});
+const dur=ms=>{const m=Math.max(0,Math.round(ms/60000));return m<60?m+" min":Math.floor(m/60)+" h "+String(m%60).padStart(2,"0")};
+
+// Journal : chaque coche, décoche et compte terminé, avec l'heure
+function logEv(ev){
+  if(!db)return;const at=Date.now();
+  db.collection("journal").doc(at+"_"+Math.random().toString(36).slice(2,6))
+    .set({date:parisISO(),at,qui:me.owner?"toi":"VA",uid:me.id||"",...ev}).catch(()=>{});
+}
+// Temps passé sur le SAS : compté seulement quand l'onglet est visible, et jamais pour toi
+async function beat(force){
+  if(!db||me.owner)return;
+  const now=Date.now(),dt=Math.min(now-lastBeat,90000);lastBeat=now;
+  if(document.hidden&&!force)return;
+  const d=parisISO(),ref=db.doc("presence/"+d+"_"+(me.id||"anon"));
+  try{const s=await ref.get(),o=s.exists?s.data():{};
+    await ref.set({date:d,uid:me.id||"",ms:(o.ms||0)+dt,first:o.first||now,last:now})}catch(e){}
+}
+setInterval(()=>beat(false),60000);
+document.addEventListener("visibilitychange",()=>{if(document.hidden)beat(true);else lastBeat=Date.now()});
+
+function subRecap(){
+  unsubR.forEach(u=>u());jr=[];pres=[];renderRecap();
+  unsubR=[
+    db.collection("journal").where("date","==",recapDate).onSnapshot(q=>{jr=q.docs.map(d=>d.data()).sort((a,b)=>a.at-b.at);renderRecap()},()=>{}),
+    db.collection("presence").where("date","==",recapDate).onSnapshot(q=>{pres=q.docs.map(d=>d.data());renderRecap()},()=>{})
+  ];
+}
+function renderRecap(){
+  const tot=pres.reduce((a,p)=>a+(p.ms||0),0);
+  const first=pres.length?Math.min(...pres.map(p=>p.first)):null,last=pres.length?Math.max(...pres.map(p=>p.last)):null;
+  const tl=jr.filter(e=>e.type==="tour"),nb=p=>tl.filter(e=>e.plan===p).length;
+  const avg=tl.length?tl.reduce((a,e)=>a+(e.fin-e.debut),0)/tl.length:0;
+  const stat=(v,l)=>`<div class="stat"><b>${v}</b><span>${l}</span></div>`;
+  const ss=sessAll[recapDate]||{};
+  $("#r_stats").innerHTML=stat(ss.debut?hm(ss.debut)+" → "+(ss.fin?hm(ss.fin):"…"):"—","Commencer → FINIS")+stat(ss.debut&&ss.fin?dur(ss.fin-ss.debut):"—","Durée du warmup")+stat(dur(tot),"Temps sur le SAS")+stat(first?hm(first)+"–"+hm(last):"—","Connexion")
+    +stat(nb("long"),"Comptes finis · Long")+stat(nb("court"),"Comptes finis · Express")
+    +stat(tl.length?dur(avg):"—","Durée moyenne par compte")+stat(jr.filter(e=>e.type==="coche").length,"Cases cochées");
+  if(!jr.length){$("#r_body").innerHTML=`<p class="msg">Rien d'enregistré ce jour-là.</p>`;return}
+  const toi=e=>e.qui==="toi"?" (toi)":"";
+  const tours=tl.map(e=>`<li><time>${hm(e.fin)}</time><span class="tour">${NOM[e.plan]} J${e.jour} · compte terminé en ${dur(e.fin-e.debut)} (${hm(e.debut)} → ${hm(e.fin)})${toi(e)}</span></li>`).join("");
+  const all=jr.map(e=>e.type==="debut"||e.type==="fin"||e.type==="reouvert"
+    ?`<li><time>${hm(e.at)}</time><span class="tour">${{debut:"COMMENCER",fin:"FINIS",reouvert:"SAS rouvert"}[e.type]}${toi(e)}</span></li>`
+    :e.type==="tour"
+    ?`<li><time>${hm(e.at)}</time><span class="tour">${NOM[e.plan]} J${e.jour} · compte terminé${toi(e)}</span></li>`
+    :`<li><time>${hm(e.at)}</time><span${e.type==="decoche"?' class="off"':""}>${e.type==="decoche"?"Décoché · ":""}${NOM[e.plan]} J${e.jour} · ${esc(e.tache||"")}${toi(e)}</span></li>`).join("");
+  $("#r_body").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
+    <h3>Comptes terminés</h3>${tl.length?`<ul class="tl">${tours}</ul>`:'<p class="msg">Aucun compte terminé pour l\'instant.</p>'}
+    <details><summary>Détail de toutes les actions (${jr.length})</summary><ul class="tl">${all}</ul></details></div>`;
+}
+
+function cardHTML(plan){
+  const P=PLANS[plan],start=cfg[plan].start,n=tours[tourId(plan)]||0;
+  const top=d=>`<div class="card-top"><span class="acc">${P.nom}</span>${d?`<span class="dnum">${d}</span>`:""}</div>`;
+  const tot=cfg[plan].nb,count=`<p class="count">${n}${tot?" / "+tot:""} compte${n>1?"s":""} terminé${n>1?"s":""} aujourd'hui${tot&&n>=tot?" ✓":""}</p>`;
+  if(!start)return `<article class="card">${top("")}<p class="msg">Pas de date de départ. À régler dans « Réglages ».</p></article>`;
+  const tn=dayNum(start);
+  if(tn<1)return `<article class="card p-passif">${top("J-"+(1-tn))}<p class="msg">Rien à faire. Ce warmup commence le ${fmt(dateOf(start,1))}.</p></article>`;
+  const day=P.get(tn);
+  if(!day)return `<article class="card p-full">${top("✓")}<p class="msg">Warmup terminé. Garder la routine : 2–3 reels par jour, stories, 3 carrousels par semaine, 10 min d'interactions.</p></article>`;
+  const [ph,tasks]=day,k=i=>`${plan}_d${tn}_t${i}`;
+  const chk=tasks.map((t,i)=>[t,i]).filter(([t])=>t.k!=="no"&&t.k!=="tip");
+  const p=chk.length?chk.filter(([,i])=>done[k(i)]).length/chk.length:0;
+  const ch=chrono[plan]&&done[k(0)]?`<div class="chrono" data-chrono="${plan}"><b>--:--</b><span>Scroll tiré au sort : ${Math.round((chrono[plan].fin-chrono[plan].debut)/60000)} min</span></div>`:"";
+  return `<article class="card p-${ph}">${top("J"+tn)}<span class="ddate">${fmt(dateOf(start,tn))}</span>${ch}
+    <div class="prog" aria-hidden="true"><i style="width:${Math.round(p*100)}%"></i></div>
+    <ul class="tasks">${tasks.map((t,i)=>{
+      if(t.k==="no")return `<li class="task no"><span class="ico">✕</span><span>${esc(t.t)}</span></li>`;
+      if(t.k==="tip")return `<li class="task tip"><span class="ico">i</span><span>${esc(t.t)}</span></li>`;
+      return `<li class="task${t.k==="proxy"?" proxy":""}"><input type="checkbox" id="c_${k(i)}" data-k="${k(i)}" data-plan="${plan}" ${done[k(i)]?"checked":""}><label for="c_${k(i)}">${esc(t.t)}</label></li>`}).join("")}</ul>
+    ${busy[plan]?'<p class="done">Compte terminé ✓ Le tableau repart à zéro pour le suivant…</p>':count}</article>`;
+}
+// Session du jour : écran « Commencer », puis bouton FINIS
+let sessAll={},sessLoaded=false;
+const sessToday=()=>sessAll[parisISO()]||{};
+function renderGate(){
+  if(!sessLoaded)return;
+  const s=sessToday(),g=$("#gate"),sas=$("#sas"),nl=cfg.long.nb,nc=cfg.court.nb;
+  if(!s.debut){g.hidden=false;sas.hidden=true;
+    g.innerHTML=`<span class="eyebrow" style="text-transform:capitalize">${fmt(new Date())}</span><h1>Commencer Warm Up des ${nl+nc} comptes IG</h1><p class="sub">( ${nl} lent${nl>1?"s":""} ) ( ${nc} rapide${nc>1?"s":""} )</p><button class="go" id="go" type="button">Commencer</button>`}
+  else if(s.fin){g.hidden=false;sas.hidden=true;
+    g.innerHTML=`<h1>Warm Up du jour terminé ✓</h1><p class="sub">Commencé à ${hm(s.debut)}, fini à ${hm(s.fin)} · ${dur(s.fin-s.debut)}</p><button class="btn" id="reopen" type="button">Rouvrir le SAS</button>`}
+  else{g.hidden=true;sas.hidden=false;$("#t_debut").textContent=`Commencé à ${hm(s.debut)}`}
+}
+async function setSess(data){
+  const d=parisISO();sessAll[d]=data;renderGate();
+  if(db){try{await db.doc("sessions/"+d).set(data)}catch(e){$("#sync").textContent="Non enregistré (droits insuffisants)"}}
+  else ls("va_sess",JSON.stringify(sessAll));
+}
+document.addEventListener("click",e=>{
+  const t=e.target;
+  if(t.id==="go"){setSess({debut:Date.now()});logEv({type:"debut"})}
+  else if(t.id==="reopen"){setSess({debut:sessToday().debut||Date.now()});logEv({type:"reouvert"})}
+  else if(t.id==="finis"){
+    if(!t.classList.contains("sure")){t.classList.add("sure");t.textContent="Confirmer FINIS ?";setTimeout(()=>{t.classList.remove("sure");t.textContent="FINIS"},4000);return}
+    t.classList.remove("sure");t.textContent="FINIS";
+    setSess({debut:sessToday().debut||Date.now(),fin:Date.now()});logEv({type:"fin"})}
+});
+function renderCards(){$("#cards").innerHTML=cardHTML("long")+cardHTML("court");tick()}
+
+// Chrono : lancé quand la 1re case ROTA PROXY est cochée, durée tirée au sort dans la fourchette de scroll du jour
+let chrono={},sonne={};
+function scrollRange(tasks){
+  const rx=/(\d+)\s*(?:[–-]\s*(\d+))?\s*min/;
+  for(const pass of [t=>/scroll/i.test(t.t),t=>t.k!=="proxy"&&t.k!=="no"&&t.k!=="tip"])
+    for(const t of tasks){if(!pass(t))continue;const m=t.t.match(rx);if(m)return [+m[1],+(m[2]||m[1])]}
+  return [15,20];
+}
+function startChrono(plan,tasks){
+  let [a,b]=scrollRange(tasks);if(a===b)b=a+2;
+  const sec=Math.round(a*60+Math.random()*(b-a)*60),debut=Date.now();
+  chrono[plan]={debut,fin:debut+sec*1000};saveChrono(plan);
+}
+function stopChrono(plan){delete chrono[plan];saveChrono(plan)}
+async function saveChrono(plan){
+  if(db){try{chrono[plan]?await db.doc("chrono/"+plan).set(chrono[plan]):await db.doc("chrono/"+plan).delete()}catch(e){}}
+  else ls("va_chrono",JSON.stringify(chrono));
+}
+function beep(){try{const A=new (window.AudioContext||window.webkitAudioContext)();[0,.35,.7].forEach(s=>{const o=A.createOscillator(),g=A.createGain();o.frequency.value=880;o.connect(g);g.connect(A.destination);g.gain.setValueAtTime(.25,A.currentTime+s);g.gain.exponentialRampToValueAtTime(.001,A.currentTime+s+.3);o.start(A.currentTime+s);o.stop(A.currentTime+s+.3)})}catch(e){}}
+function tick(){
+  document.querySelectorAll("[data-chrono]").forEach(el=>{
+    const c=chrono[el.dataset.chrono];if(!c)return;
+    const r=Math.max(0,Math.ceil((c.fin-Date.now())/1000));
+    el.querySelector("b").textContent=String(Math.floor(r/60)).padStart(2,"0")+":"+String(r%60).padStart(2,"0");
+    if(r===0){el.classList.add("fini");el.querySelector("span").textContent="Temps de scroll écoulé, passe à la suite";
+      const id=el.dataset.chrono+c.fin;if(!sonne[id]&&Date.now()-c.fin<5000){sonne[id]=1;beep()}}
+  });
+}
+setInterval(tick,1000);
+function renderSet(){
+  for(const p of ["long","court"]){const el=$("#s_"+p);if(document.activeElement!==el)el.value=cfg[p].start;const en=$("#n_"+p);if(document.activeElement!==en)en.value=cfg[p].nb}
+}
+function render(){renderCards();renderSet();renderGate()}
+
+async function saveCfg(){
+  if(db){try{await db.doc("planning/reglages").set({long:cfg.long,court:cfg.court})}catch(e){$("#sync").textContent="Non enregistré (droits insuffisants)"}}
+  else ls("va_cfg",JSON.stringify(cfg));
+}
+function allChecked(plan){
+  const start=cfg[plan].start;if(!start)return null;
+  const tn=dayNum(start),day=PLANS[plan].get(tn);if(!day||tn<1)return null;
+  const keys=day[1].map((t,i)=>[t,i]).filter(([t])=>t.k!=="no"&&t.k!=="tip").map(([,i])=>`${plan}_d${tn}_t${i}`);
+  return keys.every(x=>done[x])?keys:null;
+}
+async function resetCard(plan,keys){
+  busy[plan]=true;renderCards();
+  await new Promise(r=>setTimeout(r,1500));
+  const debut=Math.min(...keys.map(x=>atMap[x]||Date.now()));
+  logEv({type:"tour",plan,jour:dayNum(cfg[plan].start),debut,fin:Date.now()});
+  keys.forEach(x=>delete done[x]);
+  stopChrono(plan);
+  const id=tourId(plan);tours[id]=(tours[id]||0)+1;
+  busy[plan]=false;renderCards();
+  if(db){try{
+      await Promise.all(keys.map(x=>db.doc("coches/"+x).delete()));
+      const ref=db.doc("tours/"+id),s=await ref.get();
+      await ref.set({n:((s.exists&&s.data().n)||0)+1});
+    }catch(e){$("#sync").textContent="Remise à zéro non enregistrée (droits insuffisants)"}}
+  else{ls("va_coches",JSON.stringify(done));ls("va_tours",JSON.stringify(tours))}
+}
+async function toggle(k,plan,v){
+  if(busy[plan])return;
+  if(v){done[k]=true;atMap[k]=Date.now()}else delete done[k];renderCards();
+  const keys=v&&allChecked(plan);
+  {const m=k.match(/_d(\d+)_t(\d+)$/),day=m&&PLANS[plan].get(+m[1]);
+   if(m&&m[2]==="0"&&day){if(v)startChrono(plan,day[1]);else stopChrono(plan);renderCards()}
+   logEv({type:v?"coche":"decoche",plan,jour:m?+m[1]:0,tache:day?day[1][+m[2]].t:""})}
+  if(db){try{v?await db.doc("coches/"+k).set({v:true,at:Date.now()}):await db.doc("coches/"+k).delete()}catch(e){$("#sync").textContent="Coche non enregistrée (droits insuffisants)"}}
+  else ls("va_coches",JSON.stringify(done));
+  if(keys)resetCard(plan,keys);
+}
+document.addEventListener("change",e=>{const el=e.target;
+  if(el.dataset.k!==undefined){toggle(el.dataset.k,el.dataset.plan,el.checked);return}
+  if(el.id==="r_date"&&el.value&&db){recapDate=el.value;subRecap();return}
+  if(el.id==="n_long"||el.id==="n_court"){cfg[el.id.slice(2)].nb=Math.max(0,parseInt(el.value)||0);render();saveCfg();return}
+  if(el.id==="s_long"||el.id==="s_court"){cfg[el.id.slice(2)].start=el.value;renderCards();saveCfg()}});
+
+function loadLocal(){local=true;
+  try{const r=JSON.parse(ls("va_cfg")||"null");if(r)cfg=normCfg(r)}catch(e){}
+  try{done=JSON.parse(ls("va_coches")||"{}")||{}}catch(e){done={}}
+  try{tours=JSON.parse(ls("va_tours")||"{}")||{}}catch(e){tours={}}
+  try{chrono=JSON.parse(ls("va_chrono")||"{}")||{}}catch(e){chrono={}}
+  try{sessAll=JSON.parse(ls("va_sess")||"{}")||{}}catch(e){sessAll={}}sessLoaded=true;
+  $("#sync").textContent="Sauvegarde sur cet appareil uniquement";render()}
+let lastDay=parisISO();
+function checkDay(){const d=parisISO();if(d!==lastDay){lastDay=d;renderCards();renderGate()}}
+setInterval(checkDay,30000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkDay()});
+window.addEventListener("focus",checkDay);window.addEventListener("pageshow",checkDay);
+(async()=>{
+  const timer=0;
+  db=API.startsWith("http")?makeDb():null;
+  clearTimeout(timer);
+  if(!db){if(!local)loadLocal();return}
+    let got=false;
+  db.doc("planning/reglages").onSnapshot(s=>{got=true;const r=s.exists?s.data():{};cfg=normCfg(r);render()},()=>{$("#sync").textContent="Hors ligne"});
+  db.collection("coches").onSnapshot(q=>{const n={};q.docs.forEach(d=>{n[d.id]=true;atMap[d.id]=d.data().at});done=n;if(got)renderCards()},()=>{$("#sync").textContent="Hors ligne"});
+  db.collection("tours").onSnapshot(q=>{const n={};q.docs.forEach(d=>{n[d.id]=d.data().n||0});tours=n;if(got)renderCards()},()=>{});
+  db.collection("sessions").onSnapshot(q=>{const n={};q.docs.forEach(d=>{n[d.id]=d.data()});sessAll=n;sessLoaded=true;renderGate();if(me.owner)renderRecap()},()=>{});
+  db.collection("chrono").onSnapshot(q=>{const n={};q.docs.forEach(d=>{const x=d.data();if(x.fin)n[d.id]={debut:x.debut,fin:x.fin}});chrono=n;if(got)renderCards()},()=>{});
+  const user=sasUser;
+  if(user){try{me.owner=await user.isOwner()}catch(e){}try{me.id=(await user.id())||""}catch(e){}}
+  if(me.owner){$("#recap").hidden=false;$("#r_date").value=recapDate;subRecap()}
+  lastBeat=Date.now();beat(true);
+})();
+</script>
+
+</body></html>
