@@ -252,8 +252,7 @@ dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:colum
 
  <!-- RECRUTEMENT -->
  <section id="v-recrut" hidden>
-  <h2>Recrutement</h2>
-  <div id="rec-root"></div>
+  <div id="rec-root"><iframe id="rec-frame" title="Recrutement" style="display:block;width:100%;height:calc(100vh - 96px);min-height:520px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:#0b0d14"></iframe></div>
  </section>
 
  <!-- AGENDA -->
@@ -436,7 +435,7 @@ function markDeleted(id){tomb[id]=Date.now();try{localStorage.setItem('hub.tomb'
 
 // ---------- navigation
 const views=['home','recrut','agenda','todo','notes','docs','vault'];
-const render={home:renderHome,recrut:()=>{},agenda:renderAgenda,todo:renderTodos,notes:renderNotes,docs:()=>renderDocs(),vault:renderVault};
+const render={home:renderHome,recrut:()=>{const f=$('#rec-frame');if(!f.src)f.src='roster/?__p=app/recrutement'},agenda:renderAgenda,todo:renderTodos,notes:renderNotes,docs:()=>renderDocs(),vault:renderVault};
 function show(v){if(!views.includes(v))v='home';views.forEach(x=>$('#v-'+x).hidden=x!==v);document.querySelectorAll('nav [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));try{localStorage.setItem('hub.view',v)}catch{}render[v]();window.scrollTo(0,0)}
 document.querySelectorAll('nav [data-v]').forEach(b=>b.onclick=()=>show(b.dataset.v));
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
